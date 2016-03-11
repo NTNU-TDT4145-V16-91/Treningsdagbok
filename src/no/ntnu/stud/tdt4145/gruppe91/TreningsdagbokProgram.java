@@ -2,6 +2,7 @@ package no.ntnu.stud.tdt4145.gruppe91;
 import java.io.PrintStream;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Map;
@@ -23,8 +24,9 @@ public class TreningsdagbokProgram {
 	 * Each object's toString method will be used to create a user-friendly representation.
 	 * @param items The options the user must choose from.
 	 * @return 
+	 * @throws UserCancelException if the user cancels the choice
 	 */
-	public <E> E pickOne(Iterable<E> items) {
+	public <E> E pickOne(Iterable<E> items) throws UserCancelException {
 		return pickOne(items, (x) -> x.toString());
 	}
 	
@@ -34,8 +36,9 @@ public class TreningsdagbokProgram {
 	 * Only the keys will be shown to the user, while the value of the chosen key will be returned.
 	 * @param items Map in which the key is the user-friendly description and value is what will be returned.
 	 * @return The value which matches the key the user chose.
+	 * @throws UserCancelException if the user cancels the choice
 	 */
-	public <K, E> E pickOneValue(Map<K, E> items) {
+	public <K, E> E pickOneValue(Map<K, E> items) throws UserCancelException {
 		K chosenKey = pickOne(items.keySet(), (x) -> x.toString());
 		return items.get(chosenKey);
 	}
@@ -46,16 +49,18 @@ public class TreningsdagbokProgram {
 	 * Only the values will be shown to the user, while the key associated with the chosen value will be returned.
 	 * @param items Map in which the key is what will be returned and the value is the user-friendly description.
 	 * @return The key which matches the value the user chose.
+	 * @throws UserCancelException if the user cancels the choice
 	 */
-	public <K, E> K pickOneKey(Map<K, E> items) {
+	public <K, E> K pickOneKey(Map<K, E> items) throws UserCancelException {
 		return pickOne(items.keySet(), (x) -> items.get(x).toString());
 	}
 	/**
 	 * Make the user pick one of the options presented in items, and return its index.
 	 * @param items Options the user can pick from, represented by their toString() method.
 	 * @return Index of the element the user picked.
+	 * @throws UserCancelException if the user cancels the choice
 	 */
-	public <E> int pickOneIndex(List<E> items) {
+	public <E> int pickOneIndex(List<E> items) throws UserCancelException {
 		printOptions(items, (x) -> x.toString());
 		return getUserChoice(1, items.size()) - 1;
 	}
@@ -66,13 +71,14 @@ public class TreningsdagbokProgram {
 	 * @param items Items that the user can choose from.
 	 * @param mapping Mapping which returns the user-friendly representation of an item in items.
 	 * @return The item chosen by the user.
+	 * @throws UserCancelException if the user cancels the choice
 	 */
-	public <E> E pickOne(Iterable<E> items, Function<E, String> mapping) {
+	public <E> E pickOne(Iterable<E> items, Function<E, String> mapping) throws UserCancelException {
 		List<E> list = createList(items);
 		
 		printOptions(list, mapping);
 		
-		return list.get(getUserChoice(1, list.size()));
+		return list.get(getUserChoice(1, list.size()) - 1);
 		
 	}
 	
@@ -106,8 +112,9 @@ public class TreningsdagbokProgram {
 	 * @param min Lower bound, inclusive
 	 * @param max Upper bound, inclusive
 	 * @return The number the user picked.
+	 * @throws UserCancelException if the user types exit to cancel the choice.
 	 */
-	private int getUserChoice(int min, int max) {
+	private int getUserChoice(int min, int max) throws UserCancelException {
 		if (max < min) {
 			throw new IllegalArgumentException("min cannot be larger than max (min: " + min + ", max: " + max + ")");
 		}
@@ -123,6 +130,10 @@ public class TreningsdagbokProgram {
 					throw new IndexOutOfBoundsException("Choice " + choice + " is not between " + min + " and " + max);
 				}
 			} catch (InputMismatchException e) {
+				String token = in.next().trim().toLowerCase();
+				if (token.equals("exit") || token.equals("cancel")) {
+					throw new UserCancelException();
+				}
 				out.println("Please write a number");
 			} catch (IndexOutOfBoundsException e) {
 				out.println("Please pick a number between " + min + " and " + max);
@@ -133,12 +144,27 @@ public class TreningsdagbokProgram {
 		}
 	}
 	
-	public static void main(String[] args) throws Exception {
+	public void init() throws ClassNotFoundException {
 		Class.forName(SETTINGS.getDriver());
+	}
+	
+	public void run() throws Exception {
 		try (Connection conn = SETTINGS.getConnection()) {
-			// Do something
-		} catch (Exception e) {
-			System.err.print(e);
-		} 
+			// Test out picking an option
+			try (Statement stmt = conn.createStatement()) {
+				ResultSet rs = stmt.executeQuery("SELECT navn, id FROM øvelse");
+				List<String> exercises = new ArrayList<>();
+				while (rs.next()) {
+					exercises.add(rs.getString(1));
+				}
+				out.println("You picked " + pickOne(exercises) + "!");
+			}
+		}
+	}
+	
+	public static void main(String[] args) throws Exception {
+		TreningsdagbokProgram program = new TreningsdagbokProgram();
+		program.init();
+		program.run();
 	}
 }
