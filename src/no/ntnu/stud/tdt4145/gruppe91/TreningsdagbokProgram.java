@@ -4,10 +4,6 @@ import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Scanner;
 
-import javax.swing.tree.VariableHeightLayoutCache;
-
-import sun.rmi.runtime.NewThreadAction;
-
 public class TreningsdagbokProgram {
 
 	// Will not work before you've created Settings.java!
