@@ -40,6 +40,7 @@ public class TreningsdagbokProgram {
 					+ "antall_tilskuere, ute_værtype, temperatur)"
 					+ " values(?,?,?,?,?,?,?,?,?,?)");
 			
+			
 			//Input from user:
 			Scanner reader = new Scanner(System.in);
 			System.out.println("Varighet (min): ");
