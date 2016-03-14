@@ -159,8 +159,7 @@ public class TreningsdagbokProgram implements UiUtility {
 	}
 	
 	public void run() throws Exception {
-	newTrainingSession();
-	/*	try (Connection conn = SETTINGS.getConnection()) {
+		try (Connection conn = SETTINGS.getConnection()) {
 			// Test out picking an option
 			try (Statement stmt = conn.createStatement()) {
 				ResultSet rs = stmt.executeQuery("SELECT navn, id FROM Ã¸velse");
@@ -170,7 +169,7 @@ public class TreningsdagbokProgram implements UiUtility {
 				}
 				out.println("You picked " + pickOne(exercises) + "!");
 			}
-		}*/
+		}
 	}
 	
 	public static void main(String[] args) throws Exception {
@@ -311,16 +310,14 @@ public class TreningsdagbokProgram implements UiUtility {
 		}
 		
 	}
-
-	public Timestamp getUserTime() throws UserCancelException{
-		
+	//Trenger UserCancelException-implementasjon:
+	private Timestamp getUserTime() throws UserCancelException{
 		
 		List<String> choices = new ArrayList<>();
 		choices.add("I dag");
 		choices.add("I går");
 		choices.add("Skriv inn dato");
 		int choice = pickOneIndex(choices);
-		
 		
 		String date = "";
 		switch (choice){
@@ -335,15 +332,7 @@ public class TreningsdagbokProgram implements UiUtility {
 				date =dateFormat.format(cal.getTime());
 				break;
 			case 2:
-				//case: skriv inn dato. Kan nok gjøres mye bedre...
-				/*out.println("År: ");
-				int year = getUserChoice(1900, cal.get(Calendar.YEAR));
-				out.println("Måned: ");
-				int month = getUserChoice(1, 12);
-				out.println("Dag:");
-				int day = getUserChoice(1, 31);
-				cal.set(year, month, day);
-				date = dateFormat.format(cal.getTime());*/
+				//case: skriv inn dato. Kan nok gjøres bedre...
 				date = userDate();
 				break;
 			default:
