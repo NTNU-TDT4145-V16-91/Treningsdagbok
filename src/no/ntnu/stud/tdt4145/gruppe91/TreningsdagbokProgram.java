@@ -171,7 +171,21 @@ public class TreningsdagbokProgram implements UiUtility {
 	}
 
 	@Override
-	public <E> E getUserInput(Consumer<E> testInput, Function<String, E> converter) throws UserCancelException {
+	public <E> E getUserInput(Consumer<String> testRawInput, Function<String, E> converter,
+			Consumer<E> testConvertedObject) throws UserCancelException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public <E> E getUserInput(Consumer<String> testRawInput, Function<String, E> converter) throws UserCancelException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public <E> E getUserInput(Function<String, E> converter, Consumer<E> testConvertedObject)
+			throws UserCancelException {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -189,7 +203,7 @@ public class TreningsdagbokProgram implements UiUtility {
 	}
 
 	@Override
-	public String getUserString(Consumer<Integer> testInput) throws UserCancelException {
+	public String getUserString(Consumer<String> testRawInput) throws UserCancelException {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -201,7 +215,7 @@ public class TreningsdagbokProgram implements UiUtility {
 	}
 
 	@Override
-	public int getUserInt(Consumer<Integer> testInput) throws UserCancelException {
+	public int getUserInt(Consumer<Integer> testInteger) throws UserCancelException {
 		// TODO Auto-generated method stub
 		return 0;
 	}
@@ -211,4 +225,5 @@ public class TreningsdagbokProgram implements UiUtility {
 		// TODO Auto-generated method stub
 		return false;
 	}
+
 }
