@@ -5,6 +5,11 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+/**
+ * Interface for classes that make it easy to get input from the user, 
+ * eliminating the need for copy+pasting while(isValidInput)-ish boilerplate.
+ * @author Thorben Dahl
+ */
 public interface UiUtility {
 	
 	/**
@@ -12,6 +17,7 @@ public interface UiUtility {
 	 * <p>
 	 * Any exceptions raised in the provided Consumer and Function objects will be treated as user errors and will be displayed to the user.
 	 * The user may then try again. The provided functions will not run if the user input is empty.
+	 * @param <E> the type you want to get from the user
 	 * @param testRawInput Throws an exception if there is an error in the trimmed, non-empty user input. Does nothing otherwise.
 	 * @param converter Converts the user input from a trimmed, non-empty String to the specified type.
 	 * @param testConvertedObject Tests the object resulting from the conversion and throws an exception if it is invalid.
@@ -27,6 +33,7 @@ public interface UiUtility {
 	 * <p>
 	 * Any exceptions raised in the provided Consumer and Function objects will be treated as user errors and will be displayed to the user.
 	 * The user may then try again. The provided functions will not run if the user input is empty.
+	 * @param <E> the type you want to get from the user
 	 * @param testRawInput Throws an exception if there is an error in the trimmed, non-empty user input. Does nothing otherwise.
 	 * @param converter Converts the user input from a trimmed, non-empty String to the specified type.
 	 * @param testConvertedObject Tests the object resulting from the conversion and throws an exception if it is invalid.
@@ -40,6 +47,7 @@ public interface UiUtility {
 	 * <p>
 	 * Any exceptions raised in the provided Consumer and Function class will be treated as errors caused by the user, and
 	 * the exception message will be shown and the user will be able to try again.
+	 * @param <E> the type you want to get from the user
 	 * @param testRawInput Throws an exception if there is an error in the trimmed input string (before conversion).
 	 * @param converter Converts the user input from a trimmed, non-empty String to the specified type.
 	 * @return The converted object.
@@ -52,6 +60,7 @@ public interface UiUtility {
 	 * <p>
 	 * Any exceptions raised in the provided Consumer and Function classes will be treated as errors caused by the user,
 	 * and the exception message will be shown and the user will be able to try again.
+	 * @param <E> the type you want to get from the user
 	 * @param converter Converts the user input from a trimmed, non-empty String to the specified type.
 	 * @param testConvertedObject Tests the result of the conversion.
 	 * @return The converted object.
@@ -64,6 +73,7 @@ public interface UiUtility {
 	 * <p>
 	 * Any exceptions raised in the provided Function class will be treated as errors caused by the user,
 	 * and the exception message will be shown and the user will be able to try again.
+	 * @param <E> the type you want to get from the user
 	 * @param converter Converts the user input from a trimmed, non-empty String to the specified type.
 	 * @return The converted object.
 	 * @throws UserCancelException if the user cancels the input.
@@ -154,6 +164,7 @@ public interface UiUtility {
 	/**
 	 * Make the user pick one of the options presented in items, and return it.
 	 * The user-friendly string is made by the provided mapping function.
+	 * @param <E> the type of the options the user can pick from.
 	 * @param items Items that the user can choose from.
 	 * @param mapping Mapping which returns the user-friendly representation of an item in items.
 	 * @return The item chosen by the user.
@@ -163,6 +174,7 @@ public interface UiUtility {
 	
 	/**
 	 * Make the user pick one of the options presented in items, and return its index.
+	 * @param <E> the type of the options the user can pick from.
 	 * @param items Options the user can pick from, represented by their toString() method.
 	 * @return Index of the element the user picked.
 	 * @throws UserCancelException if the user cancels the choice
@@ -171,8 +183,10 @@ public interface UiUtility {
 	
 	/**
 	 * Make the user pick one of the keys in items, based on the values.
-	 * 
+	 * <p>
 	 * Only the values will be shown to the user, while the key associated with the chosen value will be returned.
+	 * @param <K> the type of the keys in items
+	 * @param <E> the type of the values in the given map
 	 * @param items Map in which the key is what will be returned and the value is the user-friendly description.
 	 * @return The key which matches the value the user chose.
 	 * @throws UserCancelException if the user cancels the choice
@@ -181,8 +195,10 @@ public interface UiUtility {
 	
 	/**
 	 * Make the user pick one of the values in items, based on the keys.
-	 * 
+	 * <p>
 	 * Only the keys will be shown to the user, while the value of the chosen key will be returned.
+	 * @param <K> the type of the keys in items
+	 * @param <E> the type of the values in items
 	 * @param items Map in which the key is the user-friendly description and value is what will be returned.
 	 * @return The value which matches the key the user chose.
 	 * @throws UserCancelException if the user cancels the choice
@@ -191,10 +207,10 @@ public interface UiUtility {
 	
 	/**
 	 * Present the user with a choice, and have them pick one.
-	 * 
 	 * Each object's toString method will be used to create a user-friendly representation.
+	 * @param <E> the type of the options the user can pick from.
 	 * @param items The options the user must choose from.
-	 * @return 
+	 * @return The option (among the ones in items) picked by the user.
 	 * @throws UserCancelException if the user cancels the choice
 	 */
 	public <E> E pickOne(Iterable<E> items) throws UserCancelException;

@@ -15,6 +15,10 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+/**
+ * Implements a command-line utility for easily getting user input.
+ * @author Thorben Dahl
+ */
 public class InputHelper implements Closeable, UiUtility {
 	private PrintStream out;
 	private Scanner in;
