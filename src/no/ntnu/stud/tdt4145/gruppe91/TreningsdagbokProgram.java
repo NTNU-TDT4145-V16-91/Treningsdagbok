@@ -7,9 +7,11 @@ import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
-public class TreningsdagbokProgram {
+public class TreningsdagbokProgram implements UiUtility {
 
 	// Will not work before you've created Settings.java!
 	public final static SettingsInterface SETTINGS = new Settings();
@@ -166,5 +168,47 @@ public class TreningsdagbokProgram {
 		TreningsdagbokProgram program = new TreningsdagbokProgram();
 		program.init();
 		program.run();
+	}
+
+	@Override
+	public <E> E getUserInput(Consumer<E> testInput, Function<String, E> converter) throws UserCancelException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public <E> E getUserInput(Function<String, E> converter) throws UserCancelException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String getUserString() throws UserCancelException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String getUserString(Consumer<Integer> testInput) throws UserCancelException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public int getUserInt() throws UserCancelException {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public int getUserInt(Consumer<Integer> testInput) throws UserCancelException {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public boolean getUserBoolean(String trueText, String falseText) throws UserCancelException {
+		// TODO Auto-generated method stub
+		return false;
 	}
 }
