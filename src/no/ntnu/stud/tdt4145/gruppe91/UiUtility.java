@@ -1,5 +1,7 @@
 package no.ntnu.stud.tdt4145.gruppe91;
 
+import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -130,5 +132,70 @@ public interface UiUtility {
 	 */
 	public boolean getUserBoolean(String trueText, String falseText) throws UserCancelException;
 
+	/**
+	 * Alias for {@link #getUserChoice(int, int)}
+	 * @param min Lower bound, inclusive
+	 * @param max Upper bound, inclusive
+	 * @return The number picked by the user.
+	 * @throws UserCancelException if the user cancels the input.
+	 * @see #getUserChoice(int, int)
+	 */
+	public int getUserIntInterval(int min, int max) throws UserCancelException;
 	
+	/**
+	 * Make the user to input a number inside the given interval.
+	 * @param min Lower bound, inclusive
+	 * @param max Upper bound, inclusive
+	 * @return The number the user picked.
+	 * @throws UserCancelException if the user types exit to cancel the choice.
+	 */
+	public int getUserChoice(int min, int max) throws UserCancelException;
+	
+	/**
+	 * Make the user pick one of the options presented in items, and return it.
+	 * The user-friendly string is made by the provided mapping function.
+	 * @param items Items that the user can choose from.
+	 * @param mapping Mapping which returns the user-friendly representation of an item in items.
+	 * @return The item chosen by the user.
+	 * @throws UserCancelException if the user cancels the choice
+	 */
+	public <E> E pickOne(Iterable<E> items, Function<E, String> mapping) throws UserCancelException;
+	
+	/**
+	 * Make the user pick one of the options presented in items, and return its index.
+	 * @param items Options the user can pick from, represented by their toString() method.
+	 * @return Index of the element the user picked.
+	 * @throws UserCancelException if the user cancels the choice
+	 */
+	public <E> int pickOneIndex(List<E> items) throws UserCancelException;
+	
+	/**
+	 * Make the user pick one of the keys in items, based on the values.
+	 * 
+	 * Only the values will be shown to the user, while the key associated with the chosen value will be returned.
+	 * @param items Map in which the key is what will be returned and the value is the user-friendly description.
+	 * @return The key which matches the value the user chose.
+	 * @throws UserCancelException if the user cancels the choice
+	 */
+	public <K, E> K pickOneKey(Map<K, E> items) throws UserCancelException;
+	
+	/**
+	 * Make the user pick one of the values in items, based on the keys.
+	 * 
+	 * Only the keys will be shown to the user, while the value of the chosen key will be returned.
+	 * @param items Map in which the key is the user-friendly description and value is what will be returned.
+	 * @return The value which matches the key the user chose.
+	 * @throws UserCancelException if the user cancels the choice
+	 */
+	public <K, E> E pickOneValue(Map<K, E> items) throws UserCancelException;
+	
+	/**
+	 * Present the user with a choice, and have them pick one.
+	 * 
+	 * Each object's toString method will be used to create a user-friendly representation.
+	 * @param items The options the user must choose from.
+	 * @return 
+	 * @throws UserCancelException if the user cancels the choice
+	 */
+	public <E> E pickOne(Iterable<E> items) throws UserCancelException;
 }
