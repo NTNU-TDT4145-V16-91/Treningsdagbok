@@ -4,6 +4,10 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
+/**
+ * Interface for data-oriented classes that holds database login details.
+ * @author Thorben Dahl
+ */
 public interface SettingsInterface {
 	/**
 	 * Returns the username you will log into the database as.

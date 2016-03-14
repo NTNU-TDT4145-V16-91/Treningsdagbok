@@ -2,15 +2,30 @@ package no.ntnu.stud.tdt4145.gruppe91;
 import java.io.PrintStream;
 import java.sql.*;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 
+/**
+ * Represents a running instance of the Treningsdagbok program, allowing users to make
+ * changes to their training diary.
+ * 
+ * <p>
+ * Before you run this class, you must create no.ntnu.stud.tdt4145.gruppe91.Settings
+ * which implements {@link SettingsInterface}. This way, the database login details
+ * won't be made public (since Settings.java is present in .gitignore).
+ * @author Thorben, Sondre, Vilde
+ *
+ */
 public class TreningsdagbokProgram implements UiUtility {
 
 	// Will not work before you've created Settings.java!
@@ -116,114 +131,284 @@ public class TreningsdagbokProgram implements UiUtility {
 	 * @return The number the user picked.
 	 * @throws UserCancelException if the user types exit to cancel the choice.
 	 */
-	private int getUserChoice(int min, int max) throws UserCancelException {
+	public int getUserChoice(int min, int max) throws UserCancelException {
 		if (max < min) {
 			throw new IllegalArgumentException("min cannot be larger than max (min: " + min + ", max: " + max + ")");
 		}
-		while (true) {
-			// Print prompt
-			out.print("[" + min + "-" + max + "]: ");
-			try {
-				int choice = in.nextInt();
-				// Is it in the interval?
-				if (min <= choice && choice <= max) {
-					return choice;
-				} else {
-					throw new IndexOutOfBoundsException("Choice " + choice + " is not between " + min + " and " + max);
-				}
-			} catch (InputMismatchException e) {
-				String token = in.next().trim().toLowerCase();
-				if (token.equals("exit") || token.equals("cancel")) {
-					throw new UserCancelException();
-				}
-				out.println("Please write a number");
-			} catch (IndexOutOfBoundsException e) {
-				out.println("Please pick a number between " + min + " and " + max);
-			} finally {
-				// flush rest of the line
-				in.nextLine();
+		int choice = getUserInt((n) -> {
+			if (!(min <= n && n <= max)) {
+				throw new IndexOutOfBoundsException("Choice " + n + " is not between " + min + " and " + max);
 			}
-		}
+		}, "[" + min + "-" + max + "]: ");
+		return choice;
+	}
+	
+	/**
+	 * Alias for {@link #getUserChoice(int, int)}
+	 * @param min Lower bound, inclusive
+	 * @param max Upper bound, inclusive
+	 * @return The number picked by the user.
+	 * @throws UserCancelException if the user cancels the input.
+	 * @see #getUserChoice(int, int)
+	 */
+	public int getUserIntInterval(int min, int max) throws UserCancelException {
+		return getUserChoice(min, max);
 	}
 	
 	public void init() throws ClassNotFoundException {
 		Class.forName(SETTINGS.getDriver());
 	}
 	
-	public void run() throws Exception {
+	public void example_run() throws Exception {
 		try (Connection conn = SETTINGS.getConnection()) {
 			// Test out picking an option
 			try (Statement stmt = conn.createStatement()) {
+				
+				// Hent øvelser fra databasen
 				ResultSet rs = stmt.executeQuery("SELECT navn, id FROM øvelse");
 				List<String> exercises = new ArrayList<>();
 				while (rs.next()) {
 					exercises.add(rs.getString(1));
 				}
+				
+				// La brukeren velge en av dem
 				out.println("You picked " + pickOne(exercises) + "!");
+				
+				// Kjør et ja/nei-spørsmål
+				out.println("Are you sure you want to pick it?");
+				out.println(getUserBoolean("Yes", "No"));
+				
+				// Gjør egne sjekker om bruker-input
+				out.println("Please write two words separated by space.");
+				out.println("You wrote " + getUserString((s) -> {
+					if (!s.matches("^\\S+\\s+\\S+$")) {
+						throw new IllegalArgumentException("Skriv to navn separert av mellomrom!");
+					}
+				}, true));
+				
+				// Konverter fra String til java.util.Date
+				// Du kan hoppe over argumenter du ikke trenger, og du trenger heller ikke skrive eksplisitt
+				// hvilke typer de forskjellige funksjonene tar inn.
+				out.println("Skriv en fremtidig dato");
+				Date dato = new Date(this.<java.util.Date>getUserInput(
+						// første argument er en funksjon som tester strengen som brukeren skriver inn (etter at den er trimmet)
+					(String r) -> {
+						// Matcher input et datoformat?
+						if (!r.matches("^\\d\\d\\.\\d\\d\\.\\d\\d\\d\\d$")) {
+							throw new InputMismatchException("Vennligst skriv en dato på formatet DD.MM.ÅÅÅÅ");
+						}
+					}, 
+						// Andre argument er en funksjon som gjør om fra String til klassen du ønsker
+					(String s) -> {
+						// Konverter fra string til dato
+						DateFormat format = new SimpleDateFormat("dd.MM.yyyy");
+						try {
+							return format.parse(s);
+						} catch (ParseException e) {
+							// Vi har ikke lov til å kaste ParseException, kast noe vi har lov til å kaste
+							throw new RuntimeException(e);
+						}
+					}, 
+						// Tredje argument er en funksjon som tester objektet etter konverteringen.
+					(java.util.Date o) -> {
+						// Sjekk om datoen er i fremtiden
+						if (!o.after(new java.util.Date())) {
+							throw new IllegalArgumentException("Datoen må være i fremtiden!");
+						}
+					})
+				.getTime()); // konverter fra java.util.Date til java.sql.Date ved å bruke Epoch time
+				System.out.println("The date you entered will be saved in the DB as " + dato);
+				
+				System.out.println("Det konkluderer testingen av input-funksjonene.");
 			}
+			
+			
 		}
 	}
 	
 	public static void main(String[] args) throws Exception {
 		TreningsdagbokProgram program = new TreningsdagbokProgram();
 		program.init();
-		program.run();
+		program.example_run();
 	}
 
 	@Override
 	public <E> E getUserInput(Consumer<String> testRawInput, Function<String, E> converter,
 			Consumer<E> testConvertedObject) throws UserCancelException {
-		// TODO Auto-generated method stub
-		return null;
+		return getUserInput(testRawInput, converter, testConvertedObject, false);
 	}
-
 	@Override
+	public <E> E getUserInput(Consumer<String> testRawInput, Function<String, E> converter,
+			Consumer<E> testConvertedObject, boolean acceptEmpty) throws UserCancelException {
+		while (true) {
+				// Get from user
+				String input = getUserString(testRawInput, acceptEmpty);
+				if (input == null) {
+					return null;
+				}
+			try {
+				// Convert
+				E converted = converter.apply(input);
+				// Test converted
+				if (testConvertedObject != null) {
+					testConvertedObject.accept(converted);
+				}
+				// All well!
+				return converted;
+			} catch (Exception e) {
+				out.println(e.getMessage());
+			}
+		}
+	}
+	
+	@Override 
 	public <E> E getUserInput(Consumer<String> testRawInput, Function<String, E> converter) throws UserCancelException {
-		// TODO Auto-generated method stub
-		return null;
+		return getUserInput(testRawInput, converter, (o) -> {}, false);
 	}
 
 	@Override
 	public <E> E getUserInput(Function<String, E> converter, Consumer<E> testConvertedObject)
 			throws UserCancelException {
-		// TODO Auto-generated method stub
-		return null;
+		return getUserInput((s) -> {}, converter, testConvertedObject, false);
 	}
 
 	@Override
 	public <E> E getUserInput(Function<String, E> converter) throws UserCancelException {
-		// TODO Auto-generated method stub
-		return null;
+		// Don't check anything, just convert and don't accept empty string
+		return getUserInput((s) -> {}, converter, (o) -> {}, false);
 	}
 
 	@Override
 	public String getUserString() throws UserCancelException {
-		// TODO Auto-generated method stub
-		return null;
+		// don't perform any additional checks, and don't accept empty string
+		return getUserString((s) -> {}, false);
 	}
 
 	@Override
 	public String getUserString(Consumer<String> testRawInput) throws UserCancelException {
-		// TODO Auto-generated method stub
-		return null;
+		// don't accept empty string
+		return getUserString(testRawInput, false);
+	}
+	
+	@Override
+	public String getUserString(Consumer<String> testRawInput, boolean acceptEmpty) throws UserCancelException {
+		String prompt = "> ";
+		while (true) {
+			// Print prompt
+			out.print(prompt);
+			// Get input
+			String input = in.nextLine().trim();
+			// Test if the user intends to cancel
+			testIfCancel(input);
+			
+			try {
+				// Check if the input is empty
+				if (input.isEmpty()) {
+					// It is, should we react or should we accept?
+					if (!acceptEmpty) {
+						throw new InputMismatchException("Du kan ikke la feltet stå tomt!");
+					} else {
+						// Return null (so it is easy to identify as being empty)
+						// This skips testRawInput
+						return null;
+					}
+				}
+				// Test if this is an acceptable string
+				if (testRawInput != null) {
+					testRawInput.accept(input);
+				}
+				return input;
+			} catch (Exception e) {
+				out.println(e.getMessage());
+			}
+		}
 	}
 
 	@Override
 	public int getUserInt() throws UserCancelException {
-		// TODO Auto-generated method stub
-		return 0;
+		// Don't do anything in the check
+		return getUserInt((x) -> {});
+	}
+	
+	@Override
+	public int getUserInt(Consumer<Integer> testInteger) throws UserCancelException {
+		return getUserInt(testInteger, "> ");
 	}
 
 	@Override
-	public int getUserInt(Consumer<Integer> testInteger) throws UserCancelException {
-		// TODO Auto-generated method stub
-		return 0;
+	public int getUserInt(Consumer<Integer> testInteger, String prompt) throws UserCancelException {
+		while (true) {
+			try {
+				// Print prompt
+				out.print(prompt);
+				// Get input from the user, try to convert to integer
+				int input = in.nextInt();
+				// Test the resulting integer
+				if (testInteger != null) {
+					testInteger.accept(input);
+				}
+				// All's well!
+				return input;
+			} catch (InputMismatchException e) {
+				// The user didn't output an integer, perhaps s/he intends to cancel?
+				String token = in.next().trim().toLowerCase();
+				testIfCancel(token);
+				// Since a UserCancelException isn't thrown at this moment, we know the user just misbehaved
+				out.println("Please write a number");
+			} catch (Exception e) {
+				out.println(e.getMessage());
+			} finally {
+				// Flush input buffer
+				in.nextLine();
+			}
+		}
 	}
 
 	@Override
 	public boolean getUserBoolean(String trueText, String falseText) throws UserCancelException {
-		// TODO Auto-generated method stub
-		return false;
+		// Just present a choice between two alternatives, where one is true and one is false
+		// Using list and not map to ensure the true alternative is first
+		Boolean[] list = {true, false};
+		// Mapping functions uses trueText for the true value, and falseText for the false value.
+		return pickOne(Arrays.asList(list), (b) -> b ? trueText : falseText);
+	}
+	
+	/**
+	 * Tests if the user intends to cancel, using the given string. It is compared to a wide range of 
+	 * trigger words in both English and Norwegian.
+	 * 
+	 * <p>
+	 * The string is trimmed and converted to lower case automatically.
+	 * 
+	 * <p>
+	 * Words that trigger UserCancelException:
+	 * <ul>
+	 * <li>exit
+	 * <li>cancel
+	 * <li>avbryt
+	 * <li>quit
+	 * <li>stopp
+	 * <li>stop
+	 * <li>bye
+	 * <li>q
+	 * </ul>
+	 * @param input Input from the user
+	 * @throws UserCancelException if the user intends to cancel input
+	 */
+	private void testIfCancel(String input) throws UserCancelException {
+		Set<String> search = new HashSet<>();
+		search.add("exit");
+		search.add("cancel");
+		search.add("avbryt");
+		search.add("quit");
+		search.add("stopp");
+		search.add("stop");
+		search.add("bye");
+		search.add("q");
+		String searchTerm = input.trim().toLowerCase();
+		if (search.contains(searchTerm)) {
+			throw new UserCancelException(searchTerm);
+		}
 	}
 
 }
