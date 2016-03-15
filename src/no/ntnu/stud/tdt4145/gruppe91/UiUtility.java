@@ -226,9 +226,22 @@ public interface UiUtility {
 	 * Returns when the user has pressed the enter key, to confirm that s/he has read the latest messages.
 	 * <p>
 	 * prompt will be displayed if it is present, no prompt will be displayed if it is null.
-	 * <p>
-	 * Note that the user cannot cancel this. If you need the user to confirm something, use {@link #getUserBoolean} instead.
 	 * @param prompt String to be displayed before waiting. Set to null to disable the prompt.
 	 */
 	public void waitForEnter(String prompt);
+	
+	/**
+	 * Returns when the user has pressed the enter key, but supports user canceling.
+	 * @throws UserCancelException when the user cancels instead of just pressing enter.
+	 */
+	public void waitForEnterOrCancel() throws UserCancelException;
+	
+	/**
+	 * Returns when the user has pressed the enter key, but supports user canceling.
+	 * @throws UserCancelException when the user cancels instead of just pressing enter.
+	 * <p>
+	 * prompt will be displayed if it is present, no prompt will be displayed if it is null.
+	 * @param prompt String to be displayed before waiting. Set to null to disable the prompt.
+	 */
+	public void waitForEnterOrCancel(String prompt) throws UserCancelException;
 }

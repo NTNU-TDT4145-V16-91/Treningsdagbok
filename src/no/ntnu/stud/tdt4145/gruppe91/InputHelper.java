@@ -85,6 +85,7 @@ public class InputHelper implements Closeable, UiUtility {
 	 * @param mapping The function that converts options from E to a user-friendly string.
 	 */
 	private <E> void printOptions(List<E> options, Function<E, String> mapping) {
+		out.println("-----------------------------");
 		for (int index = 0, option = 1; index < options.size(); index++, option++) {
 			out.println(option + ": " + mapping.apply(options.get(index)));
 		}
@@ -97,7 +98,7 @@ public class InputHelper implements Closeable, UiUtility {
 		}
 		int choice = getUserInt((n) -> {
 			if (!(min <= n && n <= max)) {
-				throw new IndexOutOfBoundsException("Choice " + n + " is not between " + min + " and " + max);
+				throw new IndexOutOfBoundsException("Velg et alternativ mellom " + min + " og " + max);
 			}
 		}, "[" + min + "-" + max + "]: ");
 		return choice;
@@ -231,7 +232,7 @@ public class InputHelper implements Closeable, UiUtility {
 				String token = in.next().trim().toLowerCase();
 				testIfCancel(token);
 				// Since a UserCancelException isn't thrown at this moment, we know the user just misbehaved
-				out.println("Please write a number");
+				out.println("Vennligst skriv et tall");
 			} catch (Exception e) {
 				out.println(e.getMessage());
 			} finally {
@@ -269,21 +270,26 @@ public class InputHelper implements Closeable, UiUtility {
 	 * <li>stop
 	 * <li>bye
 	 * <li>q
+	 * <li>done
+	 * <li>ferdig
 	 * </ul>
 	 * @param input Input from the user
 	 * @throws UserCancelException if the user intends to cancel input
 	 */
 	private void testIfCancel(String input) throws UserCancelException {
-		Set<String> search = new HashSet<>();
-		search.add("exit");
-		search.add("cancel");
-		search.add("avbryt");
-		search.add("avslutt");
-		search.add("quit");
-		search.add("stopp");
-		search.add("stop");
-		search.add("bye");
-		search.add("q");
+		Set<String> search = new HashSet<>(Arrays.asList(
+				"exit",
+				"cancel",
+				"avbryt",
+				"avslutt",
+				"quit",
+				"stopp",
+				"stop",
+				"bye",
+				"q",
+				"done",
+				"ferdig"
+				));
 		String searchTerm = input.trim().toLowerCase();
 		if (search.contains(searchTerm)) {
 			throw new UserCancelException(searchTerm);
@@ -292,15 +298,32 @@ public class InputHelper implements Closeable, UiUtility {
 
 	@Override
 	public void waitForEnter() {
-		waitForEnter("--Trykk ENTER for å fortsette--");
+		waitForEnter("== Trykk ENTER for å fortsette ==");
 	}
 
 	@Override
 	public void waitForEnter(String prompt) {
+		try {
+			waitForEnterOrCancel(prompt);
+		} catch (UserCancelException e) {
+			// do nothing
+		}
+	}
+
+	@Override
+	public void waitForEnterOrCancel() throws UserCancelException {
+		waitForEnterOrCancel("== Trykk ENTER for å fortsette, skriv AVBRYT og trykk ENTER for å avbryte ==");
+	}
+
+	@Override
+	public void waitForEnterOrCancel(String prompt) throws UserCancelException {
 		if (prompt != null) {
 			out.print(prompt);
 		}
-		in.nextLine();
+		// wait for the user to press enter
+		String input = in.nextLine();
+		// is it cancel?
+		testIfCancel(input);
 	}
 
 
