@@ -214,4 +214,21 @@ public interface UiUtility {
 	 * @throws UserCancelException if the user cancels the choice
 	 */
 	public <E> E pickOne(Iterable<E> items) throws UserCancelException;
+	
+	/**
+	 * Returns when the user has pressed the enter key, to confirm that s/he has read the latest messages.
+	 * <p>
+	 * A prompt will be displayed, so that user will know to press enter.
+	 */
+	public void waitForEnter();
+	
+	/**
+	 * Returns when the user has pressed the enter key, to confirm that s/he has read the latest messages.
+	 * <p>
+	 * prompt will be displayed if it is present, no prompt will be displayed if it is null.
+	 * <p>
+	 * Note that the user cannot cancel this. If you need the user to confirm something, use {@link #getUserBoolean} instead.
+	 * @param prompt String to be displayed before waiting. Set to null to disable the prompt.
+	 */
+	public void waitForEnter(String prompt);
 }

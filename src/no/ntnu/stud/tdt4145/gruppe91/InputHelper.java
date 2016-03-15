@@ -263,6 +263,7 @@ public class InputHelper implements Closeable, UiUtility {
 	 * <li>exit
 	 * <li>cancel
 	 * <li>avbryt
+	 * <li>avslutt
 	 * <li>quit
 	 * <li>stopp
 	 * <li>stop
@@ -277,6 +278,7 @@ public class InputHelper implements Closeable, UiUtility {
 		search.add("exit");
 		search.add("cancel");
 		search.add("avbryt");
+		search.add("avslutt");
 		search.add("quit");
 		search.add("stopp");
 		search.add("stop");
@@ -286,6 +288,19 @@ public class InputHelper implements Closeable, UiUtility {
 		if (search.contains(searchTerm)) {
 			throw new UserCancelException(searchTerm);
 		}
+	}
+
+	@Override
+	public void waitForEnter() {
+		waitForEnter("--Trykk ENTER for å fortsette--");
+	}
+
+	@Override
+	public void waitForEnter(String prompt) {
+		if (prompt != null) {
+			out.print(prompt);
+		}
+		in.nextLine();
 	}
 
 
