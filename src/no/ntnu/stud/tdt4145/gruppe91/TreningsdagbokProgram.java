@@ -11,9 +11,12 @@ import java.util.InputMismatchException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.Stack;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -98,6 +101,7 @@ public class TreningsdagbokProgram {
 						// TODO legg til logikk for å vise loggene
 
 					} else if (mainChoice == MainChoice.ORGANIZE_EXERCISES) {
+						organizeExercises(conn);
 						// TODO legg til logikk for å se, endre og slette øvelser
 
 					} else if (mainChoice == MainChoice.ORGANIZE_GROUPS) {
@@ -124,6 +128,282 @@ public class TreningsdagbokProgram {
 		}
 	}
 	
+	private enum OrganizeExercisesChoice {
+		ADD("Opprett ny"),
+		EDIT("Endre"),
+		REMOVE("Slett");
+		
+		String label;
+		
+		private OrganizeExercisesChoice(String label) {
+			this.label = label;
+		}
+		
+		@Override
+		public String toString() {
+			return this.label;
+		}
+	}
+	
+	private void organizeExercises(Connection conn) {
+		try {
+			while (true) {
+				out.println(seperator + "== ORGANISER ØVELSER ==");
+				OrganizeExercisesChoice choice = in.pickOne(Arrays.asList(OrganizeExercisesChoice.values()));
+				switch (choice) {
+					case ADD:
+						addExercise(conn);
+						break;
+					case EDIT:
+						editExercises(conn);
+						break;
+					case REMOVE:
+						removeExercises(conn);
+						break;
+					default:
+						throw new RuntimeException("Unrecognized choice " + choice);	
+				}
+			}
+		} catch (UserCancelException e) {
+			// exit to main menu
+			return;	
+		}
+	}
+	
+	private void addExercise(Connection conn) {
+		
+	}
+	
+	private void editExercises(Connection conn) {
+		navigateExercises(conn, i -> editExercise(i, conn), "== ENDRE EN ØVELSE ==");
+	}
+	
+	private enum ExerciseColumn {
+		ID("id", "ID"),
+		NAME("navn", "Navn"),
+		DESCRIPTION("beskrivelse", "Lang beskrivelse"),
+		REPETITIONS("repetisjoner", "Antall repetisjoner"),
+		SETS("sett", "Antall sett"),
+		TYPE("type", "Type øvelse"),
+		ENDURANCE_DISTANCE("utholdenhet_default_distanse", "Anbefalt distanse (km)"),
+		ENDURANCE_DURATION("utholdenhet_default_varighet", "Anbefalt varighet (min)"),
+		CAPACITY("belastning", "Belastning");
+		
+		private String columnName, humanName;
+		
+		ExerciseColumn(String columnName, String humanName) {
+			this.columnName = columnName;
+			this.humanName = humanName;
+		}
+		
+		@Override
+		public String toString() {
+			return this.columnName;
+		}
+		
+		public String getReadableName() {
+			return this.humanName;
+		}
+	}
+	
+	private enum ExerciseType {
+		UNDEFINED(null, "udefinert"),
+		ENDURANCE("utholdenhet"),
+		STRENGTH("styrke");
+		
+		private String value, readable;
+		
+		ExerciseType(String value) {
+			this(value, value);
+		}
+		
+		ExerciseType(String value, String readable) {
+			this.value = value;
+			this.readable = readable;
+		}
+		
+		@Override
+		public String toString() {
+			return this.value;
+		}
+		
+		public String getReadable() {
+			return this.readable;
+		}
+		
+		public static ExerciseType fromString(String name) {
+			for (ExerciseType type : ExerciseType.values()) {
+				if ((type.toString() == null && name == null) || 
+						(name.equalsIgnoreCase(type.toString()))) {
+					return type;
+				}
+			}
+			throw new NoSuchElementException(name);
+		}
+	}
+	
+	private void editExercise(int i, Connection conn) {
+		// Fetch data about this exercise
+		String fetchQuery = "SELECT * FROM øvelse WHERE id = ? LIMIT 1";
+		try (PreparedStatement fetchStmt = conn.prepareStatement(fetchQuery, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE)) {
+			fetchStmt.setInt(1, i);
+			ResultSet rs = fetchStmt.executeQuery();
+			rs.next();
+			
+			Map<ExerciseColumn, String> values = new HashMap<>();
+			for (ExerciseColumn column : ExerciseColumn.values()) {
+				values.put(column, rs.getString(column.toString()));
+			}
+			
+			Function<ExerciseColumn, String> mapping = (e) -> {
+				try {
+					String str = values.get(e);
+					String prefix = "";
+					if (!str.equals(rs.getString(e.toString()))) {
+						prefix = "* ";
+					}
+					return prefix + e.getReadableName() + ": " + str.substring(0, Math.min(str.length(), 50));
+				} catch (SQLException e1) {
+					e1.printStackTrace();
+					return null;
+				} catch (NullPointerException el) {
+					try {
+						if ((values.get(e) == null) != rs.wasNull()) {
+							return "* " + e.getReadableName() + ": (tom)";
+						}
+					} catch (Exception e1) {
+						e1.printStackTrace();
+					}
+					return e.getReadableName() + ": (tom)";
+				}
+			};
+			
+			
+			try {
+				
+				while (true) {
+					
+					// What column will the user edit?
+					out.println(seperator + "== REDIGERER " + rs.getString(ExerciseColumn.NAME.toString()) + " ==");
+					out.println("Hvilket felt vil du endre?");
+					out.println("Skriv FERDIG for å lagre eller forkaste endringene.");
+					
+					boolean isEndurance = false;
+					try {
+						isEndurance = ExerciseType.fromString(values.get(ExerciseColumn.TYPE)) == ExerciseType.ENDURANCE;
+					} catch (NullPointerException e) {} // no type was specified
+					
+					// workaround because lambda functions can only reference static/final variables
+					final boolean isEndurance2 = isEndurance;
+					// Limit what columns are shown
+					List<ExerciseColumn> editableColumns = Arrays.asList(ExerciseColumn.values()).stream()
+							// don't include the ID or TYPE column
+							.filter(c -> c != ExerciseColumn.ID && c != ExerciseColumn.TYPE)
+							// don't include ENDURANCE-columns if this isn't an endurance type
+							.filter(c -> isEndurance2 || (c != ExerciseColumn.ENDURANCE_DISTANCE && c != ExerciseColumn.ENDURANCE_DURATION))
+							.collect(Collectors.toList());
+					
+					// Make the user pick one
+					ExerciseColumn column = in.pickOne(editableColumns, mapping);
+					
+					// Make the user input a new value
+					try {
+						try {
+							out.println("Nåværende verdi: " + rs.getString(column.toString()));
+						} catch (NullPointerException e) {
+							out.println("Nåværende verdi: (tom)");
+						}
+						out.println("Ny " + column.getReadableName().toLowerCase() + ":");
+						String newValue;
+						switch (column) {
+						
+						// String, cannot be empty
+						case NAME:
+							String newName = in.getUserString();
+							rs.updateString(column.toString(), newName);
+							newValue = newName;
+							break;
+						
+						// String, can be empty
+						case DESCRIPTION:
+							String newString = in.getUserString(s -> {}, true);
+							if (newString == null) {
+								rs.updateNull(column.toString());
+							} else {
+								rs.updateString(column.toString(), newString);
+							}
+							newValue = newString;
+							break;
+						
+						// Integer, can be empty
+						case REPETITIONS:
+						case SETS:
+						case ENDURANCE_DURATION:
+						case CAPACITY:
+							Integer newInteger = in.getUserInput(null, str -> Integer.valueOf(str), value -> {if (value <= 0) throw new IllegalArgumentException("Kun positive tall er tillatt");}, true);
+							if (newInteger == null) {
+								rs.updateNull(column.toString());
+							} else {
+								rs.updateInt(column.toString(), newInteger);
+							}
+							newValue = (newInteger == null) ? null : String.valueOf(newInteger);
+							break;
+							
+						// Double, can be empty
+						case ENDURANCE_DISTANCE:
+							Double newDouble = in.getUserInput(null, str -> Double.valueOf(str), value -> {if (value <= 0) throw new IllegalArgumentException("Kun positive tall er tillatt");}, true);
+							if (newDouble == null) {
+								rs.updateNull(column.toString());
+							} else {
+								rs.updateDouble(column.toString(), newDouble);
+							}
+							newValue = (newDouble == null) ? null : String.valueOf(newDouble);
+							break;
+							
+						// Special case, can be one of multiple
+						case TYPE:
+							ExerciseType newType = in.pickOne(Arrays.asList(ExerciseType.values()), e -> e.getReadable());
+							if (newType.toString() == null) {
+								rs.updateNull(column.toString());
+							} else {
+								rs.updateString(column.toString(), newType.toString());
+							}
+							
+							newValue = newType.toString();
+							break;
+							
+						default:
+							throw new IllegalStateException("Unrecognized column " + column.toString());
+							
+						}
+						values.replace(column, newValue);
+					} catch (UserCancelException e) {
+
+					}
+					
+				}
+			} catch (UserCancelException e) {
+				try {
+					out.print(seperator);
+					out.println("Lagre endringene?");
+					if (in.getUserBoolean("Lagre", "Forkast")) {
+						rs.updateRow();
+						out.println("Endringene er lagret!");
+					}
+				} catch (UserCancelException f) {
+					out.println("Endringene ble forkastet.");
+				}
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		in.waitForEnter();
+	}
+	
+	private void removeExercises(Connection conn) {
+		
+	}
+
 	/**
 	 * Lets the user browse exercises by group and display their details and current goal.
 	 * @param conn Active connection to the database.
@@ -131,10 +411,10 @@ public class TreningsdagbokProgram {
 	private void showExercises(Connection conn) {
 		// Fetch everything about a given exercise
 		String singleExerciseQuery = "SELECT navn, beskrivelse, repetisjoner, sett, type, utholdenhet_default_distanse, "+
-				"utholdenhet_default_varighet, belastning FROM øvelse WHERE id = ?";
+				"utholdenhet_default_varighet, belastning FROM øvelse WHERE id = ? LIMIT 1";
 		// Fetch a goal for a given exercise
 		String goalQuery = "SELECT opprettet_tid, belastning, repetisjoner, sett, utholdenhet_distanse, utholdenhet_varighet"+
-				" FROM mål WHERE oppnådd_tid = NULL AND øvelseID = ?";
+				" FROM mål WHERE oppnådd_tid = NULL AND øvelseID = ? LIMIT 1";
 		
 		try (PreparedStatement singleExerciseStmt = conn.prepareStatement(singleExerciseQuery);
 			PreparedStatement goalStmt = conn.prepareStatement(goalQuery)) {
@@ -185,7 +465,7 @@ public class TreningsdagbokProgram {
 				} catch (UserCancelException e) {
 					return;
 				}
-			});
+			}, "== SE ØVELSER OG MÅL ==");
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
@@ -202,7 +482,7 @@ public class TreningsdagbokProgram {
 	 * @param conn Active connection to the database.
 	 * @param exerciseHandler Takes in the id of the exercise chosen by the user, and does something with it.
 	 */
-	private void navigateExercises(Connection conn, Consumer<Integer> exerciseHandler) {
+	private void navigateExercises(Connection conn, Consumer<Integer> exerciseHandler, String heading) {
 		// The statements needed for this part of the program
 		// Fetch groups with no supergroup
 		String rootGroupsQuery = "SELECT id, navn FROM gruppe WHERE id NOT IN (SELECT subgruppe_id FROM undergruppe)";
@@ -239,7 +519,8 @@ public class TreningsdagbokProgram {
 				) {
 
 			while (true) {
-				out.println(seperator + "=== VELG EN ØVELSE ELLER GRUPPE, eller skriv FERDIG ===");
+				out.println(seperator + heading);
+				out.println("Velg en øvelse eller gruppe, eller skriv FERDIG.");
 				// Print "you are here"-string consisting of the path to this group
 				out.println(groupPath.stream()
 						// Use the human-readable name for this group
