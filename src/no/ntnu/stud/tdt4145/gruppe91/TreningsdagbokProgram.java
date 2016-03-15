@@ -2,6 +2,8 @@ package no.ntnu.stud.tdt4145.gruppe91;
 import java.io.PrintStream;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.InputMismatchException;
 import java.util.List;
 import java.text.DateFormat;
@@ -30,6 +32,82 @@ public class TreningsdagbokProgram {
 	
 	public void init() throws ClassNotFoundException {
 		Class.forName(SETTINGS.getDriver());
+	}
+	
+	/**
+	 * Enum representing the different choices the user can do at the root level.
+	 * @author Thorben Dahl
+	 *
+	 */
+	private enum MainChoice {
+		ADD_TRAINING_SESSION("Ny treningsøkt"),
+		SEE_EXERCISES("Se øvelser og mål"),
+		SEE_TRAINING_SESSIONS("Se treningsøkter og resultater"),
+		SEE_LOG("Se treningslogg"),
+		ORGANIZE_EXERCISES("Legg til, endre eller fjern øvelser"),
+		ORGANIZE_GROUPS("Legg til, endre eller fjern grupper med øvelser"),
+		RUN_EXAMPLE_PROGRAM("Kjør demonstrasjon av InputHelper");
+		
+		private String readableText;
+		
+		MainChoice(String readableText) {
+			this.readableText = readableText;
+		}
+		
+		@Override
+		public String toString() {
+			return this.readableText;
+		}
+	};
+	
+	public void run() {
+		try (Connection conn = SETTINGS.getConnection()) {
+			try {
+				out.println("Velkommen til Treningsdagbok3000!");
+				while (true) {
+					out.println("\nHva ønsker du å gjøre?");
+					out.println("Skriv exit for å avslutte");
+					
+					// Make the user pick one of the enums
+					MainChoice mainChoice = in.pickOne(Arrays.asList(MainChoice.values()));
+
+					if (mainChoice == MainChoice.ADD_TRAINING_SESSION) {
+						// TODO legg inn Sondres ting her
+
+					} else if (mainChoice == MainChoice.SEE_EXERCISES) {
+						// TODO legg til logikk for å se øvelser og målene deres
+
+					} else if (mainChoice == MainChoice.SEE_TRAINING_SESSIONS) {
+						// TODO legg til logikk for å se tidligere treningsøkter og resultater
+
+					} else if (mainChoice == MainChoice.SEE_LOG) {
+						// TODO legg til logikk for å vise loggene
+
+					} else if (mainChoice == MainChoice.ORGANIZE_EXERCISES) {
+						// TODO legg til logikk for å se, endre og slette øvelser
+
+					} else if (mainChoice == MainChoice.ORGANIZE_GROUPS) {
+						// TODO legg til logikk for å se, endre og slette grupper
+
+					} else if (mainChoice == MainChoice.RUN_EXAMPLE_PROGRAM) {
+						try {
+							example_run();
+						} catch (Exception e) {
+							out.println("An error occurred:");
+							e.printStackTrace();
+						}
+					} else {
+						throw new RuntimeException("Choice " + mainChoice + " was not recognized");
+					}
+					in.waitForEnter();
+				}
+			} catch (UserCancelException e) {
+				out.println("Ser deg senere!");
+				System.exit(0);
+			}
+		} catch (SQLException e) {
+			out.println("An error occurred: " + e.getMessage());
+		}
 	}
 	
 	public void example_run() throws Exception {
@@ -102,7 +180,7 @@ public class TreningsdagbokProgram {
 	public static void main(String[] args) throws Exception {
 		TreningsdagbokProgram program = new TreningsdagbokProgram();
 		program.init();
-		program.example_run();
+		program.run();
 	}
 
 }
