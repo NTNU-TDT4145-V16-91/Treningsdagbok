@@ -1,8 +1,11 @@
 package no.ntnu.stud.tdt4145.gruppe91;
 import java.io.PrintStream;
 import java.sql.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.EnumMap;
@@ -20,7 +23,6 @@ import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.text.DateFormat;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 
 /**
  * Represents a running instance of the Treningsdagbok program, allowing users to make
@@ -46,6 +48,10 @@ public class TreningsdagbokProgram {
 	// Used for separating different dialogs. This creates a string that just repeats line-separator n times.
 	private static final String seperator = String.join("", Collections.nCopies(6, System.lineSeparator())); 
 	
+	private Calendar cal = Calendar.getInstance();
+	private  SimpleDateFormat dateFormat= new SimpleDateFormat("yyyy-MM-dd");
+	private static final List<String> VÆR = Arrays.asList("Klart", "Overskyet", "nedbør");
+	
 	public void init() throws ClassNotFoundException {
 		Class.forName(SETTINGS.getDriver());
 	}
@@ -56,13 +62,13 @@ public class TreningsdagbokProgram {
 	 *
 	 */
 	private enum MainChoice {
-		ADD_TRAINING_SESSION("Ny treningsÃ¸kt"),
-		SEE_EXERCISES("Se Ã¸velser og mÃ¥l"),
-		SEE_TRAINING_SESSIONS("Se treningsÃ¸kter og resultater"),
+		ADD_TRAINING_SESSION("Ny treningsøkt"),
+		SEE_EXERCISES("Se øvelser og mål"),
+		SEE_TRAINING_SESSIONS("Se treningsøkter og resultater"),
 		SEE_LOG("Se treningslogg"),
-		ORGANIZE_EXERCISES("Legg til, endre eller fjern Ã¸velser"),
-		ORGANIZE_GROUPS("Legg til, endre eller fjern grupper med Ã¸velser"),
-		RUN_EXAMPLE_PROGRAM("KjÃ¸r demonstrasjon av InputHelper");
+		ORGANIZE_EXERCISES("Legg til, endre eller fjern øvelser"),
+		ORGANIZE_GROUPS("Legg til, endre eller fjern grupper med øvelser"),
+		RUN_EXAMPLE_PROGRAM("Kjør demonstrasjon av InputHelper");
 		
 		private String readableText;
 		
@@ -83,7 +89,7 @@ public class TreningsdagbokProgram {
 				out.println();
 				while (true) {
 					out.println("== HOVEDMENY ==");
-					out.println("Skriv EXIT for Ã¥ avslutte");
+					out.println("Skriv EXIT for å avslutte");
 					
 					// Make the user pick one of the enums
 					MainChoice mainChoice = in.pickOne(Arrays.asList(MainChoice.values()));
@@ -95,17 +101,17 @@ public class TreningsdagbokProgram {
 						showExercises(conn);
 
 					} else if (mainChoice == MainChoice.SEE_TRAINING_SESSIONS) {
-						// TODO legg til logikk for Ã¥ se tidligere treningsÃ¸kter og resultater
+						// TODO legg til logikk for å se tidligere treningsøkter og resultater
 
 					} else if (mainChoice == MainChoice.SEE_LOG) {
-						// TODO legg til logikk for Ã¥ vise loggene
+						// TODO legg til logikk for å vise loggene
 
 					} else if (mainChoice == MainChoice.ORGANIZE_EXERCISES) {
 						organizeExercises(conn);
-						// TODO legg til logikk for Ã¥ se, endre og slette Ã¸velser
+						// TODO legg til logikk for å se, endre og slette øvelser
 
 					} else if (mainChoice == MainChoice.ORGANIZE_GROUPS) {
-						// TODO legg til logikk for Ã¥ se, endre og slette grupper
+						// TODO legg til logikk for å se, endre og slette grupper
 
 					} else if (mainChoice == MainChoice.RUN_EXAMPLE_PROGRAM) {
 						try {
@@ -127,7 +133,163 @@ public class TreningsdagbokProgram {
 			out.println("An error occurred: " + e.getMessage());
 		}
 	}
+
+	public void newTrainingSession (Connection conn) throws Exception {
+	 	try(PreparedStatement pstmt = conn.prepareStatement("INSERT INTO treningsøkt"
+				+ "(tidspunkt, varighet, personlig_form,"
+				+ " prestasjon, notat, innendørs, luftscore "
+				+ "antall_tilskuere, ute_værtype, temperatur)"
+				+ " values(?,?,?,?,?,?,?,?,?,?)")){
+;
+			
+			out.println("Tid:");
+			Timestamp timestamp = getUserTime();
+			
+			out.println("Varighet (min): ");
+			int varighet = in.getUserInt();
+			
+			out.println("Notat: \n");
+			String notat = in.getUserString();
+			out.println("Personlig form: ");
+			int persForm = in.getUserChoice(1, 10);
+			out.println("Prestasjon:");
+			int prestasjon = in.getUserChoice(1, 10);
+			
+			
+			pstmt.setTimestamp(1, timestamp);
+			pstmt.setInt(2, varighet);
+			pstmt.setInt(3, persForm);
+			pstmt.setInt(4, prestasjon);
+			pstmt.setString(5, notat);
+			
+			//Variabler avhengig av innen/utendørs:
+			
+			out.println("Innendørs (Y/N): ");
+			boolean inne = in.getUserBoolean("y", "n");
+			
+			pstmt.setBoolean(6, inne);
+
+			if (inne){
+				//innendørs
+				out.println("Luftscore: ");
+				int luftscore = in.getUserChoice(1, 10);
+				out.println("Antall tilskuere: ");
+				int tilskuere = in.getUserInt();
+				
+				pstmt.setInt(7, luftscore);
+				pstmt.setInt(8, tilskuere);
+				pstmt.setNull(9, Types.VARCHAR);
+				pstmt.setNull(10, Types.TINYINT);
+			}
+			else{
+				//utendørs
+				out.println("Velg værtype:");
+				String værtype = in.pickOne(VÆR);
+				out.println("Temperatur: ");
+				int temperatur= in.getUserInt();
+				
+				pstmt.setString(9, værtype);
+				pstmt.setInt(10, temperatur);
+				pstmt.setNull(7, Types.TINYINT);
+				pstmt.setNull(8, Types.TINYINT);
+			}
+
+			//Utfører operasjonen:
+			//pstmt.executeUpdate();
+			
+			//Tester:
+			out.println("Økt lagt til!\n");
+			out.println(pstmt.toString());			
+			
+		}catch(InputMismatchException ime){
+			out.println(ime.getMessage());
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
+		
+	}
 	
+	//Trenger UserCancelException-implementasjon:
+	private Timestamp getUserTime() throws UserCancelException{
+		
+		List<String> choices = new ArrayList<>();
+		choices.add("I dag");
+		choices.add("I går");
+		choices.add("Skriv inn dato");
+		int choice = in.pickOneIndex(choices);
+		
+		String date = "";
+		switch (choice){
+			case 0:
+				//Case: today
+				date = dateFormat.format(new Date());
+				break;
+				
+			case 1:
+				//case: yesterday
+				cal.add(Calendar.DATE, -1);
+				date =dateFormat.format(cal.getTime());
+				break;
+			case 2:
+				//case: skriv inn dato. Kan nok gjøres bedre...
+				date = userDate();
+				break;
+			default:
+				break;
+		}
+		//Tid på dagen:
+		out.println("Time: ");
+		int hour = in.getUserChoice(0,23);
+		String hourStr = hour+"";
+		if (hour<10){
+			hourStr = "0".concat(hourStr);
+		}
+		out.println("Minutter: ");
+		int min = in.getUserChoice(0, 59);
+		String minStr = min+"";
+		if (min<10){
+			minStr = "0".concat(minStr);
+		}
+		String clock = " " + hourStr + ":"+minStr+":00";
+		date = date.concat(clock);
+		return Timestamp.valueOf(date);
+	}
+	
+	//Lar brukeren skrive inn år, måned, dag:
+	private String userDate() throws UserCancelException{
+		out.println("År: ");
+		int year = in.getUserChoice(1900, cal.get(Calendar.YEAR));
+		out.println("Måned: ");
+		int maxMonth = 12;
+		if (year == cal.get(Calendar.YEAR)){
+			maxMonth = cal.get(Calendar.MONTH)+1;	//.MONTH er 0-indeksert
+		}
+		int month = in.getUserChoice(1, maxMonth);
+		out.println("Dag:");
+		int maxDay = 31;
+		if (month ==cal.get(Calendar.MONTH)+1 && year == cal.get(Calendar.YEAR)){
+			maxDay = cal.get(Calendar.DAY_OF_MONTH);
+		}
+		else if (month == 4 || month== 6 || month == 9 || month ==11){
+			maxDay = 30;
+		}
+		else if(month == 2){
+			if ((year % 4 == 0) && (year % 100 != 0) || (year % 400 == 0)){
+				maxDay =29;
+			}
+			else{
+				maxDay = 28;
+			}
+		}
+		else{
+			maxDay = 31;
+		}
+			
+		int day = in.getUserChoice(1, maxDay);
+		cal.set(year, month, day);
+		return dateFormat.format(cal.getTime());
+	}
 	private enum OrganizeExercisesChoice {
 		ADD("Opprett ny"),
 		EDIT("Endre"),
@@ -148,7 +310,7 @@ public class TreningsdagbokProgram {
 	private void organizeExercises(Connection conn) {
 		try {
 			while (true) {
-				out.println(seperator + "== ORGANISER Ã˜VELSER ==");
+				out.println(seperator + "== ORGANISER ØVELSER ==");
 				OrganizeExercisesChoice choice = in.pickOne(Arrays.asList(OrganizeExercisesChoice.values()));
 				switch (choice) {
 					case ADD:
@@ -175,7 +337,7 @@ public class TreningsdagbokProgram {
 	}
 	
 	private void editExercises(Connection conn) {
-		navigateExercises(conn, i -> editExercise(i, conn), "== ENDRE EN Ã˜VELSE ==");
+		navigateExercises(conn, i -> editExercise(i, conn), "== ENDRE EN ØVELSE ==");
 	}
 	
 	private enum ExerciseColumn {
@@ -184,7 +346,7 @@ public class TreningsdagbokProgram {
 		DESCRIPTION("beskrivelse", "Lang beskrivelse"),
 		REPETITIONS("repetisjoner", "Antall repetisjoner"),
 		SETS("sett", "Antall sett"),
-		TYPE("type", "Type Ã¸velse"),
+		TYPE("type", "Type øvelse"),
 		ENDURANCE_DISTANCE("utholdenhet_default_distanse", "Anbefalt distanse (km)"),
 		ENDURANCE_DURATION("utholdenhet_default_varighet", "Anbefalt varighet (min)"),
 		CAPACITY("belastning", "Belastning");
@@ -244,7 +406,7 @@ public class TreningsdagbokProgram {
 	
 	private void editExercise(int i, Connection conn) {
 		// Fetch data about this exercise
-		String fetchQuery = "SELECT * FROM Ã¸velse WHERE id = ? LIMIT 1";
+		String fetchQuery = "SELECT * FROM øvelse WHERE id = ? LIMIT 1";
 		try (PreparedStatement fetchStmt = conn.prepareStatement(fetchQuery, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE)) {
 			fetchStmt.setInt(1, i);
 			ResultSet rs = fetchStmt.executeQuery();
@@ -286,7 +448,7 @@ public class TreningsdagbokProgram {
 					// What column will the user edit?
 					out.println(seperator + "== REDIGERER " + rs.getString(ExerciseColumn.NAME.toString()) + " ==");
 					out.println("Hvilket felt vil du endre?");
-					out.println("Skriv FERDIG for Ã¥ lagre eller forkaste endringene.");
+					out.println("Skriv FERDIG for å lagre eller forkaste endringene.");
 					
 					boolean isEndurance = false;
 					try {
@@ -309,9 +471,9 @@ public class TreningsdagbokProgram {
 					// Make the user input a new value
 					try {
 						try {
-							out.println("NÃ¥vÃ¦rende verdi: " + rs.getString(column.toString()));
+							out.println("Nåværende verdi: " + rs.getString(column.toString()));
 						} catch (NullPointerException e) {
-							out.println("NÃ¥vÃ¦rende verdi: (tom)");
+							out.println("Nåværende verdi: (tom)");
 						}
 						out.println("Ny " + column.getReadableName().toLowerCase() + ":");
 						String newValue;
@@ -411,10 +573,10 @@ public class TreningsdagbokProgram {
 	private void showExercises(Connection conn) {
 		// Fetch everything about a given exercise
 		String singleExerciseQuery = "SELECT navn, beskrivelse, repetisjoner, sett, type, utholdenhet_default_distanse, "+
-				"utholdenhet_default_varighet, belastning FROM Ã¸velse WHERE id = ? LIMIT 1";
+				"utholdenhet_default_varighet, belastning FROM øvelse WHERE id = ? LIMIT 1";
 		// Fetch a goal for a given exercise
 		String goalQuery = "SELECT opprettet_tid, belastning, repetisjoner, sett, utholdenhet_distanse, utholdenhet_varighet"+
-				" FROM mÃ¥l WHERE oppnÃ¥dd_tid = NULL AND Ã¸velseID = ? LIMIT 1";
+				" FROM mål WHERE oppnådd_tid = NULL AND øvelseID = ? LIMIT 1";
 		
 		try (PreparedStatement singleExerciseStmt = conn.prepareStatement(singleExerciseQuery);
 			PreparedStatement goalStmt = conn.prepareStatement(goalQuery)) {
@@ -437,8 +599,8 @@ public class TreningsdagbokProgram {
 					try {
 						if (exercise.getString("type").equals("utholdenhet")) {
 	
-							out.println("UtholdenhetsÃ¸velse med anbefalt distanse pÃ¥ " + exercise.getString("utholdenhet_default_distanse") + 
-									" og varighet pÃ¥ " + exercise.getString("utholdenhet_default_varighet"));
+							out.println("Utholdenhetsøvelse med anbefalt distanse på " + exercise.getString("utholdenhet_default_distanse") + 
+									" og varighet på " + exercise.getString("utholdenhet_default_varighet"));
 						}
 					} catch (NullPointerException e) {} // type was null
 					
@@ -450,7 +612,7 @@ public class TreningsdagbokProgram {
 						// let the user cancel
 						in.waitForEnterOrCancel();
 						// and display that goal
-						out.println("Du har dette uoppnÃ¥dde mÃ¥let fra " + df.format(goal.getDate("opprettet_tid")) + ":");
+						out.println("Du har dette uoppnådde målet fra " + df.format(goal.getDate("opprettet_tid")) + ":");
 						out.println("Repetisjoner: " + goal.getString("repetisjoner") + "; Antall sett: " + goal.getString("sett") + 
 								"; Belastning: " + goal.getString("belastning"));
 						try {
@@ -465,7 +627,7 @@ public class TreningsdagbokProgram {
 				} catch (UserCancelException e) {
 					return;
 				}
-			}, "== SE Ã˜VELSER OG MÃ…L ==");
+			}, "== SE ØVELSER OG MÅL ==");
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
@@ -490,9 +652,9 @@ public class TreningsdagbokProgram {
 		String subGroupsQuery = "SELECT gruppe.id, gruppe.navn FROM gruppe JOIN undergruppe ON gruppe.id = undergruppe.subgruppe_id "+
 					"WHERE undergruppe.supergruppe_id = ?";
 		// Common part for both exercise queries
-		String exerciseQueryCommon = "SELECT Ã¸velse.id, Ã¸velse.navn FROM Ã¸velse "+
-				"LEFT JOIN Ã¸velse_i_gruppe ON Ã¸velse.id = Ã¸velse_i_gruppe.Ã¸velse_id "+
-			"WHERE Ã¸velse_i_gruppe.gruppe_id ";
+		String exerciseQueryCommon = "SELECT øvelse.id, øvelse.navn FROM øvelse "+
+				"LEFT JOIN øvelse_i_gruppe ON øvelse.id = øvelse_i_gruppe.øvelse_id "+
+			"WHERE øvelse_i_gruppe.gruppe_id ";
 		// Special part for fetching exercises in no group
 		String rootExercisesQuery = exerciseQueryCommon + "IS NULL";
 		// Special part for fetching exercises with a given group
@@ -520,13 +682,13 @@ public class TreningsdagbokProgram {
 
 			while (true) {
 				out.println(seperator + heading);
-				out.println("Velg en Ã¸velse eller gruppe, eller skriv FERDIG.");
+				out.println("Velg en øvelse eller gruppe, eller skriv FERDIG.");
 				// Print "you are here"-string consisting of the path to this group
 				out.println(groupPath.stream()
 						// Use the human-readable name for this group
 						.map(i -> groupNames.get(i))
 						// Join the elements, with prefix and delimiter
-						.collect(Collectors.joining(" â†’ ", "Du er her: ", "")));
+						.collect(Collectors.joining(" > ", "Du er her: ", "")));
 				
 				// Create and present options for the user.
 				// These options include subgroups and exercises.
@@ -578,7 +740,7 @@ public class TreningsdagbokProgram {
 				// Iterate through the exercises and add them as options for the user
 				while (exerciseRows.next()) {
 					// Storing id as it is, so it is not confused with group ids
-					entries.put(exerciseRows.getInt(1), "Ã˜velse: " + exerciseRows.getString(2));
+					entries.put(exerciseRows.getInt(1), "Øvelse: " + exerciseRows.getString(2));
 					entriesOrdered.add(exerciseRows.getInt(1));
 				}
 				
@@ -609,9 +771,10 @@ public class TreningsdagbokProgram {
 				}
 			}			
 		} catch (SQLException e) {
-			out.println("En feil har oppstÃ¥tt");
+			out.println("En feil har oppstått");
 			e.printStackTrace();
 		}
+		
 	}
 
 	public void example_run() throws Exception {
@@ -619,8 +782,8 @@ public class TreningsdagbokProgram {
 			// Test out picking an option
 			try (Statement stmt = conn.createStatement()) {
 				
-				// Hent Ã¸velser fra databasen
-				ResultSet rs = stmt.executeQuery("SELECT navn, id FROM Ã¸velse");
+				// Hent øvelser fra databasen
+				ResultSet rs = stmt.executeQuery("SELECT navn, id FROM øvelse");
 				List<String> exercises = new ArrayList<>();
 				while (rs.next()) {
 					exercises.add(rs.getString(1));
@@ -629,11 +792,11 @@ public class TreningsdagbokProgram {
 				// La brukeren velge en av dem
 				out.println("You picked " + in.pickOne(exercises) + "!");
 				
-				// KjÃ¸r et ja/nei-spÃ¸rsmÃ¥l
+				// Kjør et ja/nei-spørsmål
 				out.println("Are you sure you want to pick it?");
 				out.println(in.getUserBoolean("Yes", "No"));
 				
-				// GjÃ¸r egne sjekker om bruker-input
+				// Gjør egne sjekker om bruker-input
 				out.println("Please write two words separated by space.");
 				out.println("You wrote " + in.getUserString((s) -> {
 					if (!s.matches("^\\S+\\s+\\S+$")) {
@@ -646,21 +809,21 @@ public class TreningsdagbokProgram {
 				// hvilke typer de forskjellige funksjonene tar inn eller hvilken type getUserInput bruker.
 				out.println("Skriv en fremtidig dato");
 				Date dato = new Date(in.<java.util.Date>getUserInput(
-						// fÃ¸rste argument er en funksjon som tester strengen som brukeren skriver inn (etter at den er trimmet)
+						// første argument er en funksjon som tester strengen som brukeren skriver inn (etter at den er trimmet)
 					(String r) -> {
 						// Matcher input et datoformat?
 						if (!r.matches("^\\d\\d\\.\\d\\d\\.\\d\\d\\d\\d$")) {
-							throw new InputMismatchException("Vennligst skriv en dato pÃ¥ formatet DD.MM.Ã…Ã…Ã…Ã…");
+							throw new InputMismatchException("Vennligst skriv en dato på formatet DD.MM.ÅÅÅÅ");
 						}
 					}, 
-						// Andre argument er en funksjon som gjÃ¸r om fra String til klassen du Ã¸nsker
+						// Andre argument er en funksjon som gjør om fra String til klassen du ønsker
 					(String s) -> {
 						// Konverter fra string til dato
 						DateFormat format = new SimpleDateFormat("dd.MM.yyyy");
 						try {
 							return format.parse(s);
 						} catch (ParseException e) {
-							// Vi har ikke lov til Ã¥ kaste ParseException, kast noe vi har lov til Ã¥ kaste
+							// Vi har ikke lov til å kaste ParseException, kast noe vi har lov til å kaste
 							throw new RuntimeException(e);
 						}
 					}, 
@@ -668,10 +831,10 @@ public class TreningsdagbokProgram {
 					(java.util.Date o) -> {
 						// Sjekk om datoen er i fremtiden
 						if (!o.after(new java.util.Date())) {
-							throw new IllegalArgumentException("Datoen mÃ¥ vÃ¦re i fremtiden!");
+							throw new IllegalArgumentException("Datoen må være i fremtiden!");
 						}
 					})
-				.getTime()); // konverter fra java.util.Date til java.sql.Date ved Ã¥ bruke Epoch time
+				.getTime()); // konverter fra java.util.Date til java.sql.Date ved å bruke Epoch time
 				System.out.println("The date you entered will be saved in the DB as " + dato);
 				
 				System.out.println("Det konkluderer testingen av input-funksjonene.");
