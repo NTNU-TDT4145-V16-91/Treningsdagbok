@@ -4,6 +4,10 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
+/**
+ * Interface for data-oriented classes that holds database login details.
+ * @author Thorben Dahl
+ */
 public interface SettingsInterface {
 	/**
 	 * Returns the username you will log into the database as.
@@ -33,7 +37,7 @@ public interface SettingsInterface {
 	// The following methods are optional to implement
 	
 	/**
-	 * Input to Class.forName, that is, the package path to the Driver.
+	 * Optional: Input to Class.forName, that is, the package path to the Driver.
 	 * The default implementation returns the package path for the MySQL driver.
 	 * @return Package path to the jdbc driver.
 	 */
@@ -42,7 +46,7 @@ public interface SettingsInterface {
 	}
 	
 	/**
-	 * Returns an URL with the correct protocol, host address and database name.
+	 * Optional: Returns an URL with the correct protocol, host address and database name.
 	 * The default implementation assumes MySQL is used.
 	 * @return URL which can be used to connect to the server and the correct database. 
 	 */
@@ -51,7 +55,7 @@ public interface SettingsInterface {
 	}
 	
 	/**
-	 * Returns a new connection to the database, using the contents of this object.
+	 * Optional: Returns a new connection to the database, using the contents of this object.
 	 * @return New connection, established through DriverManager.getConnection()
 	 * @throws SQLException in case of database error.
 	 */
