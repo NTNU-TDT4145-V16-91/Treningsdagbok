@@ -76,6 +76,9 @@ public class TreningsdagbokProgram {
 		}
 	};
 	
+	/**
+	 * Runs the main menu for the program.
+	 */
 	public void run() {
 		try (Connection conn = SETTINGS.getConnection()) {
 			try {
@@ -128,6 +131,9 @@ public class TreningsdagbokProgram {
 		}
 	}
 	
+	/**
+	 * Different actions you may pick when organizing exercises.
+	 */
 	private enum OrganizeExercisesChoice {
 		ADD("Opprett ny"),
 		EDIT("Endre"),
@@ -145,6 +151,10 @@ public class TreningsdagbokProgram {
 		}
 	}
 	
+	/**
+	 * Handles menu for what the user wants to do with exercises.
+	 * @param conn Connection to the database.
+	 */
 	private void organizeExercises(Connection conn) {
 		try {
 			while (true) {
@@ -250,30 +260,38 @@ public class TreningsdagbokProgram {
 			ResultSet rs = fetchStmt.executeQuery();
 			rs.next();
 			
+			// Store the values in values, so we can display the new values when changes are made
 			Map<ExerciseColumn, String> values = new HashMap<>();
 			for (ExerciseColumn column : ExerciseColumn.values()) {
 				values.put(column, rs.getString(column.toString()));
 			}
-			
+			// What should each property look like in the list?
 			Function<ExerciseColumn, String> mapping = (e) -> {
 				try {
+					// Assume it is set
 					String str = values.get(e);
 					String prefix = "";
 					if (!str.equals(rs.getString(e.toString()))) {
+						// The value is changed from that of the database
 						prefix = "* ";
 					}
+																// Use only the 50 first characters of the value
 					return prefix + e.getReadableName() + ": " + str.substring(0, Math.min(str.length(), 50));
 				} catch (SQLException e1) {
 					e1.printStackTrace();
 					return null;
 				} catch (NullPointerException el) {
+					// The value was null, so str.equals failed
+					// Has this field been changed from what it was? (That is, is it null in the DB?)
 					try {
-						if ((values.get(e) == null) != rs.wasNull()) {
+						if (!rs.wasNull()) {
+							// Yes, it is changed
 							return "* " + e.getReadableName() + ": (tom)";
 						}
 					} catch (Exception e1) {
 						e1.printStackTrace();
 					}
+					// Not changed
 					return e.getReadableName() + ": (tom)";
 				}
 			};
@@ -360,7 +378,7 @@ public class TreningsdagbokProgram {
 							newValue = (newDouble == null) ? null : String.valueOf(newDouble);
 							break;
 							
-						// Special case, can be one of multiple
+						// Special case, can be one of multiple types
 						case TYPE:
 							ExerciseType newType = in.pickOne(Arrays.asList(ExerciseType.values()), e -> e.getReadable());
 							if (newType.toString() == null) {
