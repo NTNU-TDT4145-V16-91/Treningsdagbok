@@ -307,7 +307,6 @@ public class TreningsdagbokProgram {
 					addExStmt.executeUpdate();
 					addResult(conn, trening_id, i);
 				}catch(SQLException e){
-					e.printStackTrace();
 					out.println("Den øvelsen er allerede del av treningsøkta. Vil du fjerne den?");
 					String sqlDelete = "DELETE FROM øvelse_i_trening WHERE øvelse_id = ? AND trening_id = ?";
 					try (PreparedStatement deleteStmt = conn.prepareStatement(sqlDelete);){
