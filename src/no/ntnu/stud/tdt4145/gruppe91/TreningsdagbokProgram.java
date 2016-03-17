@@ -147,8 +147,7 @@ public class TreningsdagbokProgram {
 				+ "antall_tilskuere, ute_værtype, ute_temperatur)"
 				+ " values(?,?,?,?,?,?,?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
 	 			){
-;
-			
+	
 			out.println("Tid:");
 			Timestamp timestamp = getUserTime();
 			
@@ -240,8 +239,11 @@ public class TreningsdagbokProgram {
 
 		
 	}
-	
-	//Trenger UserCancelException-implementasjon:
+	/**
+	 * Hjelpemetode til newTrainingSession. 
+	 * @return innskrevet tidspunkt som Timestamp
+	 * @throws UserCancelException ved avbrytelse fra bruker.
+	 */
 	private Timestamp getUserTime() throws UserCancelException{
 		
 		List<String> choices = new ArrayList<>();
@@ -286,9 +288,14 @@ public class TreningsdagbokProgram {
 		date = date.concat(clock);
 		return Timestamp.valueOf(date);
 	}
+	/**
+	 * Legger inn relasjon mellom øvelse og trening.
+	 * @param conn
+	 * @param trening_id Treningsøkten som registreres
+	 */
 	private void addExerciseInTraining(Connection conn, int trening_id){
 		try(PreparedStatement addExStmt = conn.prepareStatement("INSERT INTO øvelse_i_trening "
-						+ "(trening_id, øvelse_id, plassering) values(?, ?, ?)")){
+						+ "(trening_id, øvelse_id, plassering) values(?, ?, ?)", Statement.RETURN_GENERATED_KEYS);){
 			Set<Integer> exercises = new HashSet<Integer>();
 			navigateExercises(conn, (i) -> 
 			{
@@ -296,11 +303,11 @@ public class TreningsdagbokProgram {
 					exercises.add(i);
 					addExStmt.setInt(1, trening_id);
 					addExStmt.setInt(2, i);
-					addExStmt.setInt(3, exercises.size());
+					addExStmt.setInt(3, exercises.size());	//plassering
 					addExStmt.executeUpdate();
-
-
+					addResult(conn, trening_id, i);
 				}catch(SQLException e){
+					e.printStackTrace();
 					out.println("Den øvelsen er allerede del av treningsøkta. Vil du fjerne den?");
 					String sqlDelete = "DELETE FROM øvelse_i_trening WHERE øvelse_id = ? AND trening_id = ?";
 					try (PreparedStatement deleteStmt = conn.prepareStatement(sqlDelete);){
@@ -336,7 +343,64 @@ public class TreningsdagbokProgram {
 			e.printStackTrace();
 		}
 	}
-	//Lar brukeren skrive inn år, måned, dag:
+	/**
+	 * Adds result to a training
+	 * @param conn
+	 * @param trening_id
+	 * @param øvelse_id
+	 */
+	public void addResult(Connection conn, int trening_id, int øvelse_id)throws SQLException{
+		try(PreparedStatement resultStmt = conn.prepareStatement("INSERT INTO resultat "
+				+ "(trening_id, øvelse_id, belastning, repetisjoner,"
+				+ " sett, utholdenhet_distanse, utholdenhet_varighet)"
+				+ "values(?,?,?,?,?,?,?)")){
+			out.println("Belastning: ");
+			int belastning = in.getUserInt();
+			out.println("Repetisjoner: ");
+			int repetisjoner = in.getUserInt();
+			out.println("Sett: ");
+			int sett = in.getUserInt();
+			
+			float distanse = 0;
+			while(true){
+				out.println("Distanse (utholdenhet):");
+				String distStr = in.getUserString();
+				try{
+					distanse = Float.parseFloat(distStr);
+					break;
+				}
+				catch(NumberFormatException e){
+					out.println("Skriv inn et tall på formen '0.0'");
+				}
+				catch (NullPointerException e) {
+					break;
+				}
+			}
+			out.println("Varighet (utholdenhet):");
+			int varighet = in.getUserInt();
+			
+			resultStmt.setInt(1, trening_id);
+			resultStmt.setInt(2, øvelse_id);
+			resultStmt.setInt(3, belastning);
+			resultStmt.setInt(4, repetisjoner);
+			resultStmt.setInt(5, sett);
+			resultStmt.setFloat(6, distanse);
+			resultStmt.setInt(7, varighet);
+			
+			resultStmt.executeUpdate();
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} catch (UserCancelException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	/**
+	 * Hjelpemetode til newTraingingSession for å få dato som brukerinput
+	 * @return dato på formatet deklarert i dateFormat
+	 * @throws UserCancelException
+	 */
 	private String userDate() throws UserCancelException{
 		out.println("År: ");
 		int year = in.getUserChoice(1900, cal.get(Calendar.YEAR));
