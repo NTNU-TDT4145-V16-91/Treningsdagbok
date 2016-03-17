@@ -171,8 +171,8 @@ public class TreningsdagbokProgram {
 			
 			//Variabler avhengig av innen/utendørs:
 			
-			out.println("Innendørs (Y/N): ");
-			boolean inne = in.getUserBoolean("y", "n");
+			out.println("Innendørs? ");
+			boolean inne = in.getUserBoolean("ja", "nei");
 			
 			pstmt.setBoolean(6, inne);
 
@@ -207,6 +207,26 @@ public class TreningsdagbokProgram {
 			int trening_id = rs.getInt(1); 
 				
 		 	addExerciseInTraining(conn, trening_id);
+		 	
+		 	out.println("Treningsøkt lagt til!");
+		 	String getExes = "SELECT øvelse.navn FROM øvelse JOIN øvelse_i_trening ON øvelse_id = id WHERE trening_id = ?;";
+		 	String fetchString = "SELECT notat, tidspunkt, varighet FROM treningsøkt WHERE id = ?;";
+		 	try(PreparedStatement fetchStmt = conn.prepareStatement(fetchString);PreparedStatement exStmt = conn.prepareStatement(getExes)){
+		 		exStmt.setInt(1, trening_id);
+		 		fetchStmt.setInt(1, trening_id);
+		 		ResultSet fetchResult = fetchStmt.executeQuery();
+		 		ResultSet exResult = exStmt.executeQuery();
+		 		while(fetchResult.next()){
+		 			out.println(fetchResult.getString(1));
+		 		}
+		 		while(exResult.next()){
+		 			out.println(exResult.getString(1));
+		 		}
+		 	}
+		 	catch(SQLException e){
+		 		e.printStackTrace();
+		 	}
+		 	in.waitForEnter();
 	 	}
 	 	catch(UserCancelException e){
 	 		// TODO: handle exception
@@ -282,22 +302,23 @@ public class TreningsdagbokProgram {
 
 				}catch(SQLException e){
 					out.println("Den øvelsen er allerede del av treningsøkta. Vil du fjerne den?");
-					String sqlDelete = "DELETE FROM øvelse_i_trening WHERE øvelse_id = ?";
-					try (PreparedStatement pstmt = conn.prepareStatement(sqlDelete);){
+					String sqlDelete = "DELETE FROM øvelse_i_trening WHERE øvelse_id = ? AND trening_id = ?";
+					try (PreparedStatement deleteStmt = conn.prepareStatement(sqlDelete);){
 						if (in.getUserBoolean("Fjern den", "Avbryt")) {
 							exercises.remove(i);
-							pstmt.setInt(1, i);
-							pstmt.executeUpdate();
+							deleteStmt.setInt(1, i);
+							deleteStmt.setInt(2, trening_id);
+							deleteStmt.executeUpdate();
 						}
 					} catch (UserCancelException e1) {
 						return;
 					}catch (SQLException e2){
-						e.printStackTrace();
+						e2.printStackTrace();
 					}
 				}
-				try {
-					String fetchString = "Select øvelse.navn FROM øvelse_i_trening, øvelse WHERE trening_id = ?";
-					PreparedStatement listØvelser  = conn.prepareStatement(fetchString);
+				String fetchString = "Select øvelse.navn FROM  øvelse JOIN øvelse_i_trening ON øvelse_id = id WHERE trening_id = ?";
+				try (PreparedStatement listØvelser  = conn.prepareStatement(fetchString)){
+					
 					listØvelser.setInt(1, trening_id);
 					ResultSet rs = listØvelser.executeQuery();
 					out.print("Øvelser denne økten:");
@@ -314,7 +335,6 @@ public class TreningsdagbokProgram {
 		catch(SQLException e){
 			e.printStackTrace();
 		}
-		
 	}
 	//Lar brukeren skrive inn år, måned, dag:
 	private String userDate() throws UserCancelException{

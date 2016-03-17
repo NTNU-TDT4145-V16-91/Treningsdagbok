@@ -184,7 +184,7 @@ public class InputHelper implements Closeable, UiUtility {
 				if (input.isEmpty()) {
 					// It is, should we react or should we accept?
 					if (!acceptEmpty) {
-						throw new InputMismatchException("Du kan ikke la feltet stÃ¥ tomt!");
+						throw new InputMismatchException("Du kan ikke la feltet stå tomt!");
 					} else {
 						// Return null (so it is easy to identify as being empty)
 						// This skips testRawInput
@@ -298,7 +298,7 @@ public class InputHelper implements Closeable, UiUtility {
 
 	@Override
 	public void waitForEnter() {
-		waitForEnter("== Trykk ENTER for Ã¥ fortsette ==");
+		waitForEnter("== Trykk ENTER for å fortsette ==");
 	}
 
 	@Override
@@ -312,7 +312,7 @@ public class InputHelper implements Closeable, UiUtility {
 
 	@Override
 	public void waitForEnterOrCancel() throws UserCancelException {
-		waitForEnterOrCancel("== Trykk ENTER for Ã¥ fortsette, skriv AVBRYT og trykk ENTER for Ã¥ avbryte ==");
+		waitForEnterOrCancel("== Trykk ENTER for å fortsette, skriv AVBRYT og trykk ENTER for å avbryte ==");
 	}
 
 	@Override
