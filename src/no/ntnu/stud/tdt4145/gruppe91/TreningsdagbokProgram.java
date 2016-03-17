@@ -67,8 +67,7 @@ public class TreningsdagbokProgram {
 		SEE_TRAINING_SESSIONS("Se treningsøkter og resultater"),
 		SEE_LOG("Se treningslogg"),
 		ORGANIZE_EXERCISES("Legg til, endre eller fjern øvelser"),
-		ORGANIZE_GROUPS("Legg til, endre eller fjern grupper med øvelser"),
-		RUN_EXAMPLE_PROGRAM("Kjør demonstrasjon av InputHelper");
+		ORGANIZE_GROUPS("Legg til, endre eller fjern grupper med øvelser");
 		
 		private String readableText;
 		
@@ -98,31 +97,30 @@ public class TreningsdagbokProgram {
 					MainChoice mainChoice = in.pickOne(Arrays.asList(MainChoice.values()));
 
 					if (mainChoice == MainChoice.ADD_TRAINING_SESSION) {
-						// TODO legg inn Sondres ting her
-
+						try {
+							newTrainingSession(conn);
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
 					} else if (mainChoice == MainChoice.SEE_EXERCISES) {
 						showExercises(conn);
 
 					} else if (mainChoice == MainChoice.SEE_TRAINING_SESSIONS) {
 						// TODO legg til logikk for å se tidligere treningsøkter og resultater
-
+						out.println("Ikke implementert!");
+						in.waitForEnter();
 					} else if (mainChoice == MainChoice.SEE_LOG) {
 						// TODO legg til logikk for å vise loggene
-
+						out.println("Ikke implementert!");
+						in.waitForEnter();
 					} else if (mainChoice == MainChoice.ORGANIZE_EXERCISES) {
 						organizeExercises(conn);
 						// TODO legg til logikk for å se, endre og slette øvelser
 
 					} else if (mainChoice == MainChoice.ORGANIZE_GROUPS) {
 						// TODO legg til logikk for å se, endre og slette grupper
-
-					} else if (mainChoice == MainChoice.RUN_EXAMPLE_PROGRAM) {
-						try {
-							example_run();
-						} catch (Exception e) {
-							out.println("An error occurred:");
-							e.printStackTrace();
-						}
+						out.println("Ikke implementert!");
+						in.waitForEnter();
 					} else {
 						throw new RuntimeException("Choice " + mainChoice + " was not recognized");
 					}
@@ -321,6 +319,7 @@ public class TreningsdagbokProgram {
 		try {
 			while (true) {
 				out.println(seperator + "== ORGANISER ØVELSER ==");
+				out.println("Skriv EXIT for å gå tilbake til hovedmenyen.");
 				OrganizeExercisesChoice choice = in.pickOne(Arrays.asList(OrganizeExercisesChoice.values()));
 				switch (choice) {
 					case ADD:
@@ -343,7 +342,68 @@ public class TreningsdagbokProgram {
 	}
 	
 	private void addExercise(Connection conn) {
-		
+		String insertQuery = "INSERT INTO øvelse (navn, beskrivelse, repetisjoner, sett, type, "+
+						"utholdenhet_default_distanse, utholdenhet_default_varighet, belastning) VALUES ("
+						+"?, ?, ?, ?, ?, ?, ?, ?)";
+		try (PreparedStatement insertStmt = conn.prepareStatement(insertQuery, Statement.RETURN_GENERATED_KEYS)) {
+			out.println("Navn: ");	String navn = in.getUserString();
+			out.println("Lang beskrivelse: "); 	String beskrivelse = in.getUserString(t->{}, true);
+			Consumer<Integer> testNotNegative = i->{if (i < 0) throw new RuntimeException("Må være tom eller >= 0");};
+			Consumer<String> dummy = o->{};
+			out.println("Antall repetisjoner: "); 	Integer repetisjoner = in.getUserInput(dummy, s->Integer.valueOf(s), testNotNegative, true);
+			out.println("Antall sett: ");	Integer sett = in.getUserInput(dummy, s->Integer.valueOf(s), testNotNegative, true);
+			out.println("Type øvelse: ");	ExerciseType type = in.pickOne(Arrays.asList(ExerciseType.values()), e -> e.getReadable());
+			Double utholdenhet_default_distanse = null;
+			Integer utholdenhet_default_varighet = null;
+			if (type == ExerciseType.ENDURANCE) {
+				out.println("Forvalgt distanse: ");
+				utholdenhet_default_distanse = in.getUserInput(dummy, s->Double.valueOf(s), d->{if(d<0){throw new RuntimeException("Må være positiv");}}, true);
+				out.println("Forvalgt varighet: ");
+				utholdenhet_default_varighet = in.getUserInput(dummy, s->Integer.valueOf(s), testNotNegative, true);
+			}
+			out.println("Belastning: ");	Integer belastning = in.getUserInput(dummy, s->Integer.valueOf(s), testNotNegative, true);
+			
+			// Sett verdier
+			insertStmt.setString(1, navn);
+			// jdbc alene suger kuk
+			// min argumentasjon:
+			try {insertStmt.setString(2, beskrivelse);} catch (NullPointerException e) { insertStmt.setNull(2, Types.LONGVARCHAR);}
+			try {insertStmt.setInt(3, repetisjoner);} catch (NullPointerException e) { insertStmt.setNull(3, Types.INTEGER); }
+			try {insertStmt.setInt(4, sett);} catch (NullPointerException e) { insertStmt.setNull(4, Types.INTEGER); }
+			try {insertStmt.setString(5, type.toString());} catch (NullPointerException e) { insertStmt.setNull(5, Types.VARCHAR); }
+			try {insertStmt.setDouble(6, utholdenhet_default_distanse);} catch (NullPointerException e) { insertStmt.setNull(6, Types.DOUBLE);}
+			try {insertStmt.setInt(7, utholdenhet_default_varighet);} catch (NullPointerException e) { insertStmt.setNull(7, Types.INTEGER); }
+			try {insertStmt.setInt(8, belastning);} catch (NullPointerException e) { insertStmt.setNull(8, Types.INTEGER); }
+			// *mic drop*
+			
+			insertStmt.executeUpdate();
+			
+			ResultSet keys = insertStmt.getGeneratedKeys();
+			keys.next();
+			int exerciseId = keys.getInt(1);
+			
+			out.println("Øvelsen er lagt til!");
+			out.println("Vil du legge den til i en gruppe?");
+			while (in.getUserBoolean("Ja!", "Nei")) {
+				out.println("Velg en gruppe du vil legge øvelsen til i.");
+				int gruppeId = pickGroup(conn);
+				String addGroupQuery = "INSERT INTO øvelse_i_gruppe (øvelse_id, gruppe_id) VALUES (?, ?)";
+				try (PreparedStatement addGroupStmt = conn.prepareStatement(addGroupQuery)) {
+					addGroupStmt.setInt(1, exerciseId);
+					addGroupStmt.setInt(2, gruppeId);
+					addGroupStmt.executeUpdate();
+					out.println("Lagt til!");
+				} catch (SQLException e) {
+					out.println("En feil oppstod. Øvelsen ligger sannsynligvis allerede i den gruppa.");
+				}
+				out.println("Vil du legge den i en gruppe til?");
+			}
+			out.println("Ferdig!");
+			in.waitForEnter();
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} catch (UserCancelException e) {}
 	}
 	
 	private void editExercises(Connection conn) {
@@ -581,9 +641,27 @@ public class TreningsdagbokProgram {
 	}
 	
 	private void removeExercises(Connection conn) {
-		
+		navigateExercises(conn, e -> removeExercise(conn, e), "== VELG EN ØVELSE DU VIL SLETTE ==");
 	}
 
+	private void removeExercise(Connection conn, int id) {
+		String removeQuery = "DELETE FROM øvelse WHERE id = ?";
+		try (PreparedStatement removeStmt = conn.prepareStatement(removeQuery)) {
+			out.println(seperator + "Sletter du denne øvelsen, mister du også alle resultater og mål for denne øvelsen.");
+			out.println("ER DU SIKKER PÅ AT DU VIL GJØRE DETTE?");
+			if (!in.getUserBoolean("Slett øvelsen og alle tilhørende data", "Avbryt")) {
+				return;
+			}
+			removeStmt.setInt(1, id);
+			removeStmt.executeUpdate();
+			out.println("Øvelsen er slettet.");
+			in.waitForEnter();
+		} catch (UserCancelException e) {
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
 	/**
 	 * Lets the user browse exercises by group and display their details and current goal.
 	 * @param conn Active connection to the database.
@@ -792,7 +870,19 @@ public class TreningsdagbokProgram {
 			out.println("En feil har oppstått");
 			e.printStackTrace();
 		}
-		
+	}
+	
+	public int pickGroup(Connection conn) throws UserCancelException, SQLException {
+		// Generate list of groups
+		String groupsQuery = "SELECT id, navn FROM gruppe ORDER BY navn";
+		Map<Integer, String> groups = new HashMap<>();
+		try (PreparedStatement groupsStmt = conn.prepareStatement(groupsQuery)) {
+			ResultSet rs = groupsStmt.executeQuery();
+			while (rs.next()) {
+				groups.put(rs.getInt(1), rs.getString(2));
+			}
+		}
+		return in.pickOneKey(groups);
 	}
 
 	public void example_run() throws Exception {
