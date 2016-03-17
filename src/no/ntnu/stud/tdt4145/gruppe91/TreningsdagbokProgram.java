@@ -10,12 +10,14 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.InputMismatchException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Queue;
+import java.util.Set;
 import java.util.Stack;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -95,7 +97,7 @@ public class TreningsdagbokProgram {
 					MainChoice mainChoice = in.pickOne(Arrays.asList(MainChoice.values()));
 
 					if (mainChoice == MainChoice.ADD_TRAINING_SESSION) {
-						// TODO legg inn Sondres ting her
+						newTrainingSession(conn);
 
 					} else if (mainChoice == MainChoice.SEE_EXERCISES) {
 						showExercises(conn);
@@ -133,13 +135,17 @@ public class TreningsdagbokProgram {
 			out.println("An error occurred: " + e.getMessage());
 		}
 	}
-
-	public void newTrainingSession (Connection conn) throws Exception {
+	/**
+	 * Create a new training session.
+	 * @param conn
+	 */
+	public void newTrainingSession (Connection conn){
 	 	try(PreparedStatement pstmt = conn.prepareStatement("INSERT INTO treningsøkt"
 				+ "(tidspunkt, varighet, personlig_form,"
-				+ " prestasjon, notat, innendørs, luftscore "
-				+ "antall_tilskuere, ute_værtype, temperatur)"
-				+ " values(?,?,?,?,?,?,?,?,?,?)")){
+				+ " prestasjon, notat, innendørs, luftscore, "
+				+ "antall_tilskuere, ute_værtype, ute_temperatur)"
+				+ " values(?,?,?,?,?,?,?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
+	 			){
 ;
 			
 			out.println("Tid:");
@@ -194,19 +200,23 @@ public class TreningsdagbokProgram {
 				pstmt.setNull(8, Types.TINYINT);
 			}
 
-			//Utfører operasjonen:
-			//pstmt.executeUpdate();
-			
-			//Tester:
-			out.println("Økt lagt til!\n");
-			out.println(pstmt.toString());			
-			
-		}catch(InputMismatchException ime){
-			out.println(ime.getMessage());
+			pstmt.executeUpdate();
+			ResultSet rs = pstmt.getGeneratedKeys();
+			rs.next();
+			int trening_id = rs.getInt(1); 
+				
+		 	addExerciseInTraining(conn, trening_id);
+	 	}
+	 	catch(UserCancelException e){
+	 		// TODO: handle exception
+	 		return;
+	 	}
+	 	catch (SQLException sqlE) {
+			// TODO: handle exception
+	 		sqlE.printStackTrace();
 		}
-		catch(Exception e){
-			e.printStackTrace();
-		}
+	 	
+
 		
 	}
 	
@@ -255,7 +265,56 @@ public class TreningsdagbokProgram {
 		date = date.concat(clock);
 		return Timestamp.valueOf(date);
 	}
-	
+	private void addExerciseInTraining(Connection conn, int trening_id){
+		try(PreparedStatement addExStmt = conn.prepareStatement("INSERT INTO øvelse_i_trening "
+						+ "(trening_id, øvelse_id, plassering) values(?, ?, ?)")){
+			Set<Integer> exercises = new HashSet<Integer>();
+			navigateExercises(conn, (i) -> 
+			{
+				try{
+					exercises.add(i);
+					addExStmt.setInt(1, trening_id);
+					addExStmt.setInt(2, i);
+					addExStmt.setInt(3, exercises.size());
+					addExStmt.executeUpdate();
+
+
+				}catch(SQLException e){
+					out.println("Den øvelsen er allerede del av treningsøkta. Vil du fjerne den?");
+					String sqlDelete = "DELETE FROM øvelse_i_trening WHERE øvelse_id = ?";
+					try (PreparedStatement pstmt = conn.prepareStatement(sqlDelete);){
+						if (in.getUserBoolean("Fjern den", "Avbryt")) {
+							exercises.remove(i);
+							pstmt.setInt(1, i);
+							pstmt.executeUpdate();
+						}
+					} catch (UserCancelException e1) {
+						return;
+					}catch (SQLException e2){
+						e.printStackTrace();
+					}
+				}
+				try {
+					String fetchString = "Select øvelse.navn FROM øvelse_i_trening, øvelse WHERE trening_id = ?";
+					PreparedStatement listØvelser  = conn.prepareStatement(fetchString);
+					listØvelser.setInt(1, trening_id);
+					ResultSet rs = listØvelser.executeQuery();
+					out.print("Øvelser denne økten:");
+					while(rs.next()){
+						out.print(rs.getString(1)+ ", ");
+					}
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+			},
+			"Legg til øvelser");
+			exercises.clear();
+		}
+		catch(SQLException e){
+			e.printStackTrace();
+		}
+		
+	}
 	//Lar brukeren skrive inn år, måned, dag:
 	private String userDate() throws UserCancelException{
 		out.println("År: ");
